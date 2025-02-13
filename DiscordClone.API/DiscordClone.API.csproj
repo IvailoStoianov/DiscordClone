@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DiscordClone.Data.Models\DiscordClone.Data.Models.csproj" />
     <ProjectReference Include="..\DiscordClone.Data\DiscordClone.Data.csproj" />
+    <ProjectReference Include="..\DiscordClone.Services.Data\DiscordClone.Services.Data.csproj" />
   </ItemGroup>
 
 </Project>

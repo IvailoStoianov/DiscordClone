@@ -3,6 +3,8 @@ using DiscordClone.Data.Models;
 using DiscordClone.Data.Repository.Interfaces;
 using DiscordClone.Data.Repository;
 using Microsoft.EntityFrameworkCore;
+using DiscordClone.Services.Data;
+using DiscordClone.Services.Data.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add repositories
 builder.Services.AddScoped<IRepository<User>, UserRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
 
 // Add controllers
 builder.Services.AddControllers();
