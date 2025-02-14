@@ -22,6 +22,21 @@ namespace DiscordClone.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.Property<Guid>("ChatRoomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ChatRoomId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ChatRoomUser", (string)null);
+                });
+
             modelBuilder.Entity("DiscordClone.Data.Models.ChatRoom", b =>
                 {
                     b.Property<Guid>("Id")
@@ -262,6 +277,21 @@ namespace DiscordClone.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.HasOne("DiscordClone.Data.Models.ChatRoom", null)
+                        .WithMany()
+                        .HasForeignKey("ChatRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DiscordClone.Data.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DiscordClone.Data.Models.Message", b =>
                 {
                     b.HasOne("DiscordClone.Data.Models.ChatRoom", "ChatRoom")
@@ -273,7 +303,7 @@ namespace DiscordClone.Data.Migrations
                     b.HasOne("DiscordClone.Data.Models.User", "User")
                         .WithMany("Messages")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ChatRoom");

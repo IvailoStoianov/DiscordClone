@@ -14,13 +14,28 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add repositories
 builder.Services.AddScoped<IRepository<User>, UserRepository>();
+builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<ChatRoomRepository>();
+builder.Services.AddScoped<MessageRepository>();
 builder.Services.AddScoped<IChatService, ChatService>();
+
+// Add services to the container
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 // Add controllers
 builder.Services.AddControllers();
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();

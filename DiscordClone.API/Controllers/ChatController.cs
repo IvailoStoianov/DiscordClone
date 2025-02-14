@@ -1,50 +1,93 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-
+using DiscordClone.Services.Data.Interfaces;
+using DiscordClone.ViewModels;
 namespace DiscordClone.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/chat")]
     public class ChatController : Controller
     {
+        private readonly IChatService _chatService;
+        public ChatController(IChatService chatService)
+        {
+            _chatService = chatService;
+        }
         [HttpGet]
+        [Route("")]
         public async Task<IActionResult> GetAllChats()
         {
-            return View();
+            var chats = await _chatService.GetAllChatsAsync();
+            return Ok(chats);
         }
         [HttpGet]
-        public async Task<IActionResult> GetChat(int id)
+        [Route("{id}")]
+        public async Task<IActionResult> GetChat(string id)
         {
-            return View();
+            var chat = await _chatService.GetChatByIdAsync(Guid.Parse(id));
+            if (chat == null)
+            {
+                return NotFound();
+            }
+            return Ok(chat);
         }
         [HttpPost]
-        public async Task<IActionResult> CreateChat()
+        [Route("")]
+        public async Task<IActionResult> CreateChat(ChatRoomViewModel chat)
         {
-            return View();
+            Guid chatId = await _chatService.CreateChatAsync(chat);
+            chat.Id = chatId;
+            return CreatedAtAction(nameof(GetChat), new { id = chatId.ToString() }, chat);
         }
         [HttpPost]
-        public async Task<IActionResult> PostMessage()
+        [Route("message")]
+        public async Task<IActionResult> PostMessage(MessageViewModel message)
         {
-            return View();
+            var messageId = await _chatService.PostMessageAsync(message);
+            return CreatedAtAction(nameof(PostMessage), new { id = messageId }, message);
+        }
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> DeleteChat(string id)
+        {
+            var result = await _chatService.DeleteChatAsync(Guid.Parse(id));
+            if (!result)
+            {
+                return NotFound();
+            }
+            return Ok();
+        }
+        [HttpDelete]
+        [Route("message/{id}")]
+        public async Task<IActionResult> DeleteMessage(string id)
+        {
+            var result = await _chatService.DeleteMessageAsync(Guid.Parse(id));
+            if (!result)
+            {
+                return NotFound();
+            }
+            return Ok();
         }
         [HttpPost]
-        public async Task<IActionResult> DeleteChat(int id)
+        [Route("{id}/users/{userId}")]
+        public async Task<IActionResult> AddUserToChat(string id, string userId)
         {
-            return View();
+            var result = await _chatService.AddUserToChatAsync(Guid.Parse(id), Guid.Parse(userId));
+            if (!result)
+            {
+                return NotFound();
+            }
+            return Ok();
         }
-        [HttpPost]
-        public async Task<IActionResult> DeleteMessage(int id)
+        [HttpDelete]
+        [Route("{id}/users/{userId}")]
+        public async Task<IActionResult> RemoveUserFromChat(string id, string userId)
         {
-            return View();
-        }
-        [HttpPost]
-        public async Task<IActionResult> AddUserToChat(int id)
-        {
-            return View();
-        }
-        [HttpPost]
-        public async Task<IActionResult> RemoveUserFromChat(int id)
-        {
-            return View();
+            var result = await _chatService.RemoveUserFromChatAsync(Guid.Parse(id), Guid.Parse(userId));
+            if (!result)
+            {
+                return NotFound();
+            }
+            return Ok();
         }
     }
 }

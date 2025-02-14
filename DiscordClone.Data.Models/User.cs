@@ -14,5 +14,6 @@ namespace DiscordClone.Data.Models
             this.Id = Guid.NewGuid();
         }
         public ICollection<Message> Messages { get; set; } = new List<Message>();
+        public ICollection<ChatRoom> Chats { get; set; } = new List<ChatRoom>();
     }
 }

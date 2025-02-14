@@ -40,6 +40,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordClone.Data.Models", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordClone.Services.Data", "DiscordClone.Services.Data\DiscordClone.Services.Data.csproj", "{EDA21044-4A03-45EC-B7B0-546329718419}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ViewModels", "ViewModels", "{A70321B3-0D42-4315-8DF3-46EB77A7620E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordClone.ViewModels", "DiscordClone.ViewModels\DiscordClone.ViewModels.csproj", "{27351ED0-AB29-49C3-9788-D46199CEA01F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,6 +70,10 @@ Global
 		{EDA21044-4A03-45EC-B7B0-546329718419}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDA21044-4A03-45EC-B7B0-546329718419}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDA21044-4A03-45EC-B7B0-546329718419}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -74,5 +82,6 @@ Global
 		{11FEBF9A-3E90-409F-B027-744E85F85263} = {6E95E7C4-6644-490C-97FA-3527E11FD91D}
 		{0072DDBC-375E-48B7-86CE-EFDFBF7AF71B} = {6E95E7C4-6644-490C-97FA-3527E11FD91D}
 		{EDA21044-4A03-45EC-B7B0-546329718419} = {F85C6727-C39B-4062-BDF6-9EFA5E473679}
+		{27351ED0-AB29-49C3-9788-D46199CEA01F} = {A70321B3-0D42-4315-8DF3-46EB77A7620E}
 	EndGlobalSection
 EndGlobal

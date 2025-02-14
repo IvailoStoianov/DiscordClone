@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DiscordClone.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250212185253_AddedIdentity")]
-    partial class AddedIdentity
+    [Migration("20250214153154_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,21 @@ namespace DiscordClone.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.Property<Guid>("ChatRoomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ChatRoomId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ChatRoomUser", (string)null);
+                });
 
             modelBuilder.Entity("DiscordClone.Data.Models.ChatRoom", b =>
                 {
@@ -265,6 +280,21 @@ namespace DiscordClone.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ChatRoomUser", b =>
+                {
+                    b.HasOne("DiscordClone.Data.Models.ChatRoom", null)
+                        .WithMany()
+                        .HasForeignKey("ChatRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DiscordClone.Data.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DiscordClone.Data.Models.Message", b =>
                 {
                     b.HasOne("DiscordClone.Data.Models.ChatRoom", "ChatRoom")
@@ -276,7 +306,7 @@ namespace DiscordClone.Data.Migrations
                     b.HasOne("DiscordClone.Data.Models.User", "User")
                         .WithMany("Messages")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ChatRoom");

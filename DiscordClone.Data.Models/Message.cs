@@ -14,9 +14,9 @@ namespace DiscordClone.Data.Models
 
         // Foreign Keys
         public Guid UserId { get; set; }
-        public User User { get; set; }
+        public User? User { get; set; } = null!;
 
         public Guid ChatRoomId { get; set; }
-        public ChatRoom ChatRoom { get; set; }
+        public ChatRoom? ChatRoom { get; set; } = null!;
     }
 }
