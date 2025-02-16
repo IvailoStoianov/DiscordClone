@@ -50,5 +50,16 @@ namespace DiscordClone.Data.Repository
                 await _context.SaveChangesAsync();
             }
         }
+        public async Task<bool> SoftDeleteAsync(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return false;
+            }
+            user.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

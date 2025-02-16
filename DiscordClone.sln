@@ -44,6 +44,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ViewModels", "ViewModels", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordClone.ViewModels", "DiscordClone.ViewModels\DiscordClone.ViewModels.csproj", "{27351ED0-AB29-49C3-9788-D46199CEA01F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordClone.Common", "DiscordClone.Common\DiscordClone.Common.csproj", "{0125CD98-0826-49F8-B1DB-D2DDC495A8B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,10 @@ Global
 		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{27351ED0-AB29-49C3-9788-D46199CEA01F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0125CD98-0826-49F8-B1DB-D2DDC495A8B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0125CD98-0826-49F8-B1DB-D2DDC495A8B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0125CD98-0826-49F8-B1DB-D2DDC495A8B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0125CD98-0826-49F8-B1DB-D2DDC495A8B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,5 +89,6 @@ Global
 		{0072DDBC-375E-48B7-86CE-EFDFBF7AF71B} = {6E95E7C4-6644-490C-97FA-3527E11FD91D}
 		{EDA21044-4A03-45EC-B7B0-546329718419} = {F85C6727-C39B-4062-BDF6-9EFA5E473679}
 		{27351ED0-AB29-49C3-9788-D46199CEA01F} = {A70321B3-0D42-4315-8DF3-46EB77A7620E}
+		{0125CD98-0826-49F8-B1DB-D2DDC495A8B0} = {D78FF785-24E1-487A-82BA-D4C5FE9FE41C}
 	EndGlobalSection
 EndGlobal

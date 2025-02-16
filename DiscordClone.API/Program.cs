@@ -17,7 +17,10 @@ builder.Services.AddScoped<IRepository<User>, UserRepository>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<ChatRoomRepository>();
 builder.Services.AddScoped<MessageRepository>();
+
+//Add servies
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();

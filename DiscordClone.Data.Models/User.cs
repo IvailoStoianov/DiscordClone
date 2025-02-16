@@ -1,9 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DiscordClone.Data.Models.Constants;
+using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
 namespace DiscordClone.Data.Models
 {
@@ -13,7 +10,16 @@ namespace DiscordClone.Data.Models
         {
             this.Id = Guid.NewGuid();
         }
-        public ICollection<Message> Messages { get; set; } = new List<Message>();
-        public ICollection<ChatRoom> Chats { get; set; } = new List<ChatRoom>();
+
+        [Required]
+        [MaxLength(ValidationConstants.User.UsernameMaxLength)]
+        public override string UserName { get; set; } = null!;
+        [Required]
+        public bool IsDeleted { get; set; } = false;
+
+
+        public virtual ICollection<Message> Messages { get; set; } = new HashSet<Message>();
+        
+        public virtual ICollection<ChatRoom> ChatRooms { get; set; } = new HashSet<ChatRoom>();
     }
 }

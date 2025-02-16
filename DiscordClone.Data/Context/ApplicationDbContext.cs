@@ -26,7 +26,7 @@ namespace DiscordClone.Data.Context
                 entity.HasOne(m => m.User)
                     .WithMany(u => u.Messages)
                     .HasForeignKey(m => m.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);  // Prevent cascade delete
+                    .OnDelete(DeleteBehavior.Restrict); 
 
                 entity.HasOne(m => m.ChatRoom)
                     .WithMany(c => c.Messages)
@@ -34,13 +34,17 @@ namespace DiscordClone.Data.Context
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure ChatRoom relationships
             modelBuilder.Entity<ChatRoom>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 
+                entity.HasOne(c => c.Owner)
+                    .WithMany()
+                    .HasForeignKey(c => c.OwnerId)
+                    .OnDelete(DeleteBehavior.Restrict);  
+
                 entity.HasMany(c => c.Users)
-                    .WithMany(u => u.Chats)
+                    .WithMany(u => u.ChatRooms)
                     .UsingEntity<Dictionary<string, object>>(
                         "ChatRoomUser",
                         j => j

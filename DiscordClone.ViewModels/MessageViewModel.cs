@@ -13,14 +13,10 @@ namespace DiscordClone.ViewModels
         public DateTime Timestamp { get; set; }
         
         public Guid UserId { get; set; }
-        public string UserName { get; set; } = string.Empty;
-        public string UserAvatarUrl { get; set; } = string.Empty;
-
         public Guid ChatRoomId { get; set; }
 
         public bool IsEdited { get; set; }
         public bool IsOwnMessage { get; set; }
-        public bool IsRead { get; set; }
         public string FormattedTimestamp => FormatTimestamp();
 
         private string FormatTimestamp()

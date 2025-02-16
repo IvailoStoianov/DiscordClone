@@ -13,5 +13,6 @@ namespace DiscordClone.Data.Repository.Interfaces
         Task AddAsync(T entity);
         Task UpdateAsync(T entity);
         Task DeleteAsync(Guid id);
+        Task<bool> SoftDeleteAsync(Guid id);
     }
 }

@@ -50,5 +50,16 @@ namespace DiscordClone.Data.Repository
             _context.ChatRooms.Update(entity);
             await _context.SaveChangesAsync();
         }
+        public async Task<bool> SoftDeleteAsync(Guid id)
+        {
+            var chatRoom = await _context.ChatRooms.FindAsync(id);
+            if (chatRoom == null)
+            {
+                return false;
+            }
+            chatRoom.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

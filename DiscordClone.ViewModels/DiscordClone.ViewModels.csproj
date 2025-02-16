@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\DiscordClone.Common\DiscordClone.Common.csproj" />
+    <ProjectReference Include="..\DiscordClone.Data.Models\DiscordClone.Data.Models.csproj" />
+  </ItemGroup>
+
 </Project>

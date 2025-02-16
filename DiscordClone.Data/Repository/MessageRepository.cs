@@ -51,5 +51,16 @@ namespace DiscordClone.Data.Repository
             _context.Messages.Update(entity);
             await _context.SaveChangesAsync();
         }
+        public async Task<bool> SoftDeleteAsync(Guid id)
+        {
+            var message = await _context.Messages.FindAsync(id);
+            if (message == null)
+            {
+                return false;
+            }
+            message.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }
