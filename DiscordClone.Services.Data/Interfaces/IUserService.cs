@@ -7,6 +7,6 @@ namespace DiscordClone.Services.Data.Interfaces
     {
         Task<UserViewModel?> LoginAsync(string username);
         Task<bool> LogoutAsync(string username);
-        Task<bool> IsUsernameAvailableAsync(string username);
+        Task<List<string>> GetActiveUsersAsync();
     }
 }

@@ -5,7 +5,7 @@ namespace DiscordClone.Services.Data.Interfaces
 {
     public interface IChatService
     {
-        Task<IEnumerable<ChatRoomViewModel>> GetAllChatsAsync();
+        Task<IEnumerable<ChatRoomViewModel>> GetAllChatsForUserAsync(Guid userId);
         Task<ChatRoomViewModel?> GetChatByIdAsync(Guid id);
         Task<Guid> CreateChatAsync(ChatRoomInputModel chat, Guid userId);
         Task<bool> UpdateChatAsync(ChatRoomViewModel chat, Guid userId);

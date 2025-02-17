@@ -27,7 +27,7 @@ namespace DiscordClone.API.Controllers
             var user = await _userService.LoginAsync(model.Username);
             if (user == null)
             {
-                return Conflict("Username is already taken");
+                return Conflict("Could not create the user");
             }
 
             return Ok(user);
@@ -39,12 +39,11 @@ namespace DiscordClone.API.Controllers
             var result = await _userService.LogoutAsync(username);
             return result ? Ok() : NotFound();
         }
-
-        [HttpGet("check-username")]
-        public async Task<IActionResult> CheckUsername([FromQuery] string username)
+        [HttpGet("active-users")]
+        public async Task<IActionResult> ActiveUsers()
         {
-            var isAvailable = await _userService.IsUsernameAvailableAsync(username);
-            return Ok(new { isAvailable });
+            var users = await _userService.GetActiveUsersAsync();
+            return Ok(users);
         }
     }
 }

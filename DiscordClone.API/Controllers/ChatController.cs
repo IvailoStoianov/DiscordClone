@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DiscordClone.Services.Data.Interfaces;
-using DiscordClone.ViewModels;
-using DiscordClone.ViewModels.ChatRoom;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using DiscordClone.ViewModels;
+using DiscordClone.ViewModels.ChatRoom;
+
 namespace DiscordClone.API.Controllers
 {
     [Authorize]
@@ -16,13 +17,19 @@ namespace DiscordClone.API.Controllers
         {
             _chatService = chatService;
         }
+
         [HttpGet]
         [Route("")]
-        public async Task<IActionResult> GetAllChats()
+        public async Task<IActionResult> GetAllChatsForUser([FromQuery] string userId)
         {
-            var chats = await _chatService.GetAllChatsAsync();
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest("User ID is required");
+            }
+            var chats = await _chatService.GetAllChatsForUserAsync(Guid.Parse(userId));
             return Ok(chats);
         }
+
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetChat(string id)
@@ -34,9 +41,10 @@ namespace DiscordClone.API.Controllers
             }
             return Ok(chat);
         }
+
         [HttpPost]
         [Route("")]
-        public async Task<IActionResult> CreateChat(ChatRoomInputModel chat)
+        public async Task<IActionResult> CreateChat([FromBody] ChatRoomInputModel chat)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
@@ -46,9 +54,10 @@ namespace DiscordClone.API.Controllers
             Guid chatId = await _chatService.CreateChatAsync(chat, Guid.Parse(userId));
             return CreatedAtAction(nameof(GetChat), new { id = chatId.ToString() }, chat);
         }
+
         [HttpPost]
         [Route("update/{id}")]
-        public async Task<IActionResult> UpdateChat(string id, ChatRoomViewModel chat)
+        public async Task<IActionResult> UpdateChat(string id, [FromBody] ChatRoomViewModel chat)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
@@ -62,9 +71,10 @@ namespace DiscordClone.API.Controllers
             }
             return Ok();
         }
+
         [HttpPost]
         [Route("message")]
-        public async Task<IActionResult> PostMessage(MessageViewModel message)
+        public async Task<IActionResult> PostMessage([FromBody] MessageViewModel message)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
@@ -74,6 +84,7 @@ namespace DiscordClone.API.Controllers
             var messageId = await _chatService.PostMessageAsync(message, Guid.Parse(userId));
             return CreatedAtAction(nameof(PostMessage), new { id = messageId }, message);
         }
+
         [HttpDelete]
         [Route("{id}")]
         public async Task<IActionResult> DeleteChat(string id)
@@ -90,6 +101,7 @@ namespace DiscordClone.API.Controllers
             }
             return Ok();
         }
+
         [HttpDelete]
         [Route("message/{id}")]
         public async Task<IActionResult> DeleteMessage(string id)
@@ -106,6 +118,7 @@ namespace DiscordClone.API.Controllers
             }
             return Ok();
         }
+
         [HttpPost]
         [Route("{id}/users/{userId}")]
         public async Task<IActionResult> AddUserToChat(string id)
@@ -122,6 +135,7 @@ namespace DiscordClone.API.Controllers
             }
             return Ok();
         }
+
         [HttpDelete]
         [Route("{id}/users/{userId}")]
         public async Task<IActionResult> RemoveUserFromChat(string id)

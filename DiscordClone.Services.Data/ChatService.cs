@@ -22,8 +22,13 @@ namespace DiscordClone.Services.Data
             _messageRepository = messageRepository;
         }
 
-        public async Task<IEnumerable<ChatRoomViewModel>> GetAllChatsAsync()
+        public async Task<IEnumerable<ChatRoomViewModel>> GetAllChatsForUserAsync(Guid userId)
         {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException("User not found");
+            }
             var chats = await _chatRoomRepository.GetAllAsync();
             return chats.Select(chat => new ChatRoomViewModel
             {

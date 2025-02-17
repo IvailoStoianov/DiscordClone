@@ -5,6 +5,7 @@ using DiscordClone.Data.Repository;
 using Microsoft.EntityFrameworkCore;
 using DiscordClone.Services.Data;
 using DiscordClone.Services.Data.Interfaces;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,41 @@ builder.Services.AddSwaggerGen();
 // Add controllers
 builder.Services.AddControllers();
 
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        builder => builder
+            .WithOrigins("http://localhost:5173") // Default Vite dev server port
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
+
+// Add Authentication with custom handling
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "CustomScheme";
+    options.DefaultAuthenticateScheme = "CustomScheme";
+    options.DefaultChallengeScheme = "CustomScheme";
+})
+.AddCookie("CustomScheme", options =>
+{
+    options.Events = new CookieAuthenticationEvents
+    {
+        OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        },
+        OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+    };
+    options.Cookie.Name = "DiscordClone.Auth";
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -39,8 +75,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseRouting();
+
+// Enable CORS
+app.UseCors("AllowReactApp");
+
+// Add these in this order
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

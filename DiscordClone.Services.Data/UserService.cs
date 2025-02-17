@@ -25,11 +25,6 @@ namespace DiscordClone.Services.Data
 
         public async Task<UserViewModel?> LoginAsync(string username)
         {
-            if (_activeUsers.Contains(username))
-            {
-                return null; // Username is already taken
-            }
-
             // Try to find existing user
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserName == username);
@@ -60,13 +55,9 @@ namespace DiscordClone.Services.Data
             return Task.FromResult(_activeUsers.Remove(username));
         }
 
-        public async Task<bool> IsUsernameAvailableAsync(string username)
+        public Task<List<string>> GetActiveUsersAsync()
         {
-            if (_activeUsers.Contains(username))
-                return false;
-
-            return !await _context.Users
-                .AnyAsync(u => u.UserName == username);
+            return Task.FromResult(_activeUsers.ToList());
         }
     }
 }
