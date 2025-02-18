@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using DiscordClone.ViewModels;
 using DiscordClone.Services.Data.Interfaces;
 using DiscordClone.ViewModels.User;
 
@@ -19,31 +18,15 @@ namespace DiscordClone.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginInputModel model)
         {
-            if (string.IsNullOrWhiteSpace(model.Username))
-            {
-                return BadRequest("Username cannot be empty");
-            }
-
-            var user = await _userService.LoginAsync(model.Username);
-            if (user == null)
-            {
-                return Conflict("Could not create the user");
-            }
-
-            return Ok(user);
+            var result = await _userService.LoginAsync(model.Username, HttpContext);
+            return result ? Ok() : Unauthorized();
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout([FromBody] string username)
+        public async Task<IActionResult> Logout()
         {
-            var result = await _userService.LogoutAsync(username);
+            var result = await _userService.LogoutAsync(HttpContext);
             return result ? Ok() : NotFound();
-        }
-        [HttpGet("active-users")]
-        public async Task<IActionResult> ActiveUsers()
-        {
-            var users = await _userService.GetActiveUsersAsync();
-            return Ok(users);
         }
     }
 }

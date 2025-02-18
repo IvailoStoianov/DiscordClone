@@ -6,12 +6,26 @@ using Microsoft.EntityFrameworkCore;
 using DiscordClone.Services.Data;
 using DiscordClone.Services.Data.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add MSSQL database connection
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add Identity
+builder.Services.AddIdentity<User, IdentityRole<Guid>>(options => 
+{
+    options.SignIn.RequireConfirmedAccount = false;
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // Add repositories
 builder.Services.AddScoped<IRepository<User>, UserRepository>();
@@ -40,30 +54,26 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader());
 });
 
-// Add Authentication with custom handling
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = "CustomScheme";
-    options.DefaultAuthenticateScheme = "CustomScheme";
-    options.DefaultChallengeScheme = "CustomScheme";
-})
-.AddCookie("CustomScheme", options =>
-{
-    options.Events = new CookieAuthenticationEvents
+// Add Cookie Authentication with custom handling
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
     {
-        OnRedirectToLogin = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        },
-        OnRedirectToAccessDenied = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
-        }
-    };
-    options.Cookie.Name = "DiscordClone.Auth";
+        options.LoginPath = "/api/auth/login";
+        options.AccessDeniedPath = "/api/auth/forbidden"; 
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30); 
+        options.Cookie.HttpOnly = true; 
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
+        options.Cookie.SameSite = SameSiteMode.Strict; 
+    });
+
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
 });
+
+builder.Services.AddDistributedMemoryCache();
 
 var app = builder.Build();
 

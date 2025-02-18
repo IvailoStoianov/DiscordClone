@@ -1,63 +1,57 @@
-﻿using DiscordClone.Data;
-using DiscordClone.Data.Context;
-using DiscordClone.Data.Models;
+﻿using DiscordClone.Data.Models;
 using DiscordClone.Services.Data.Interfaces;
-using DiscordClone.ViewModels;
-using DiscordClone.ViewModels.User;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+
 
 namespace DiscordClone.Services.Data
 {
     public class UserService : IUserService
     {
-        private readonly ApplicationDbContext _context;
-        private static readonly HashSet<string> _activeUsers = new();
+        private readonly UserManager<User> _userManager;
 
-        public UserService(ApplicationDbContext context)
+        public UserService(UserManager<User> userManager)
         {
-            _context = context;
+            _userManager = userManager;
         }
 
-        public async Task<UserViewModel?> LoginAsync(string username)
+        public async Task<bool> LoginAsync(string username, HttpContext httpContext)
         {
             // Try to find existing user
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.UserName == username);
-
-            // If user doesn't exist, create new one
+            var user = await _userManager.FindByNameAsync(username);
             if (user == null)
             {
-                user = new User
-                {
-                    UserName = username,
-                    Id = Guid.NewGuid()
-                };
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                await _userManager.CreateAsync(new User { UserName = username });
             }
 
-            _activeUsers.Add(username);
-
-            return new UserViewModel
+            user = await _userManager.FindByNameAsync(username);
+            var claims = new List<Claim>
             {
-                Id = user.Id,
-                Username = user.UserName!
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName)
             };
+           
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true, 
+                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
+            };
+
+            await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+                                      new ClaimsPrincipal(claimsIdentity),
+                                      authProperties);
+
+            return true;
         }
 
-        public Task<bool> LogoutAsync(string username)
+        public async Task<bool> LogoutAsync(HttpContext httpContext)
         {
-            return Task.FromResult(_activeUsers.Remove(username));
-        }
-
-        public Task<List<string>> GetActiveUsersAsync()
-        {
-            return Task.FromResult(_activeUsers.ToList());
+            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return true;
         }
     }
 }
