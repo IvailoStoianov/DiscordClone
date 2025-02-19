@@ -44,27 +44,73 @@ builder.Services.AddSwaggerGen();
 // Add controllers
 builder.Services.AddControllers();
 
-// Add CORS policy
+// Add CORS configuration before app.UseHttpsRedirection()
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         builder => builder
-            .WithOrigins("http://localhost:5173") // Default Vite dev server port
+            .WithOrigins("http://localhost:5173") 
             .AllowAnyMethod()
-            .AllowAnyHeader());
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
 
-// Add Cookie Authentication with custom handling
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+// Update Cookie Authentication configuration
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddCookie(options =>
+{
+    options.Cookie.Name = ".AspNetCore.Cookies";
+    options.LoginPath = "/api/auth/login";
+    options.LogoutPath = "/api/auth/logout";
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    
+    options.Events = new CookieAuthenticationEvents
     {
-        options.LoginPath = "/api/auth/login";
-        options.AccessDeniedPath = "/api/auth/forbidden"; 
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(30); 
-        options.Cookie.HttpOnly = true; 
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always; 
-        options.Cookie.SameSite = SameSiteMode.Strict; 
-    });
+        OnValidatePrincipal = async context =>
+        {
+            Console.WriteLine("Validating Principal");
+            Console.WriteLine($"Cookie present: {context.Request.Cookies[".AspNetCore.Cookies"] != null}");
+            if (context.Principal?.Identity?.IsAuthenticated == true)
+            {
+                foreach (var claim in context.Principal.Claims)
+                {
+                    Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Principal is not authenticated");
+                if (context.Principal == null)
+                    Console.WriteLine("Principal is null");
+                else if (context.Principal.Identity == null)
+                    Console.WriteLine("Identity is null");
+            }
+        },
+        OnRedirectToLogin = context =>
+        {
+            Console.WriteLine("Redirecting to login");
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        },
+        OnSigningIn = context =>
+        {
+            Console.WriteLine("Signing in user");
+            foreach (var claim in context.Principal.Claims)
+            {
+                Console.WriteLine($"Setting claim: {claim.Type} = {claim.Value}");
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
 
 builder.Services.AddSession(options =>
 {
@@ -86,11 +132,30 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Enable CORS
+// Add CORS middleware before routing/endpoints
 app.UseCors("AllowReactApp");
 
 // Add these in this order
 app.UseAuthentication();
+
+// Add this middleware after UseAuthentication
+app.Use(async (context, next) =>
+{
+    Console.WriteLine("\n=== Request Details ===");
+    Console.WriteLine($"Request Path: {context.Request.Path}");
+    Console.WriteLine($"Request Method: {context.Request.Method}");
+    Console.WriteLine("=== Cookies ===");
+    foreach (var cookie in context.Request.Cookies)
+    {
+        Console.WriteLine($"Cookie: {cookie.Key} = {cookie.Value.Substring(0, Math.Min(cookie.Value.Length, 20))}...");
+    }
+    Console.WriteLine("=== Authentication Status ===");
+    Console.WriteLine($"Is Authenticated: {context.User?.Identity?.IsAuthenticated}");
+    Console.WriteLine($"Authentication Type: {context.User?.Identity?.AuthenticationType}");
+    
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapControllers();

@@ -1,40 +1,42 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import ChatRoom from './components/ChatRoom'
-import { loginUser, getUserSession, logoutUser } from './services/api'
+import { loginUser, logoutUser, checkLocalSession } from './services/api'
 
 function App() {
   const [username, setUsername] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [error, setError] = useState('')
   const [userData, setUserData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Check for existing session on component mount
   useEffect(() => {
-    const session = getUserSession();
+    const session = checkLocalSession();
     if (session) {
       setIsLoggedIn(true);
       setUserData(session);
       setUsername(session.username);
     }
+    setIsLoading(false);
   }, []);
 
   const handleJoin = async () => {
     if (username.trim()) {
       try {
-        const data = await loginUser(username.trim());
-        setUserData(data);
+        const userData = await loginUser(username.trim());
         setIsLoggedIn(true);
+        setUserData(userData);
         setError('');
       } catch (error) {
-        setError(error.message);
+        setError(error.message || 'Login failed');
       }
     }
   };
 
   const handleLogout = async () => {
     try {
-      await logoutUser(userData.username);
+      await logoutUser();
       setIsLoggedIn(false);
       setUserData(null);
       setUsername('');
@@ -49,8 +51,12 @@ function App() {
     }
   };
 
-  if (isLoggedIn) {
-    return <ChatRoom userData={userData} onLogout={handleLogout} />
+  if (isLoading) {
+    return <div className="welcome-container">Loading...</div>;
+  }
+
+  if (isLoggedIn && userData) {
+    return <ChatRoom userData={userData} onLogout={handleLogout} />;
   }
 
   return (
@@ -68,7 +74,7 @@ function App() {
         {error && <div className="error-message">{error}</div>}
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

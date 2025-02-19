@@ -15,6 +15,7 @@ function ChatRoom({ userData, onLogout }) {
   const [showMembersModal, setShowMembersModal] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState(null)
   const [editMessageText, setEditMessageText] = useState('')
+  const [error, setError] = useState(null)
   
   // Mock data for chat members - replace this with actual data from your API
   const [chatMembers] = useState([
@@ -33,49 +34,44 @@ function ChatRoom({ userData, onLogout }) {
       const chats = await getAllChats(userData.id);
       setChatRooms(chats);
     } catch (error) {
-      console.error('Failed to load chat rooms:', error);
+      setError('Failed to load chats');
+      console.error(error);
     }
   };
 
-  const handleCreateRoom = async () => {
-    if (newChatRoomName.trim()) {
-      try {
-        const newRoom = {
-          name: newChatRoomName,
-          // Add any other required chat room properties
-        };
-        
-        const createdRoom = await createChat(newRoom, userData.id);
-        setChatRooms([...chatRooms, createdRoom]);
-        setNewChatRoomName('');
-        setShowCreateForm(false);
-      } catch (error) {
-        console.error('Failed to create chat room:', error);
-      }
+  const handleCreateRoom = async (e) => {
+    e.preventDefault();
+    if (!newChatRoomName.trim()) return;
+
+    try {
+      const newChat = await createChat(newChatRoomName);
+      setChatRooms([...chatRooms, newChat]);
+      setNewChatRoomName('');
+      setShowCreateForm(false);
+    } catch (error) {
+      setError('Failed to create chat');
+      console.error(error);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (newMessage.trim() && selectedRoom) {
-      try {
-        const messageData = {
-          text: newMessage,
-          chatRoomId: selectedRoom.id,
-          timestamp: new Date().toISOString(),
-        };
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedRoom) return;
 
-        const postedMessage = await postMessage(messageData, userData.id);
-        setMessages([...messages, {
-          ...postedMessage,
-          user: {
-            username: userData.username,
-            avatarUrl: logo
-          }
-        }]);
-        setNewMessage('');
-      } catch (error) {
-        console.error('Failed to send message:', error);
-      }
+    try {
+      const userSession = JSON.parse(localStorage.getItem('userSession'));
+      const messageData = {
+        text: newMessage,
+        chatRoomId: selectedRoom.id,
+        timestamp: new Date().toISOString(),
+      };
+
+      await postMessage(messageData, selectedRoom.id, userSession.id);
+      setNewMessage('');
+      loadChatRooms();
+    } catch (error) {
+      setError('Failed to send message');
+      console.error(error);
     }
   };
 
@@ -112,6 +108,8 @@ function ChatRoom({ userData, onLogout }) {
 
   return (
     <div className="chat-container">
+      {error && <div className="error-message">{error}</div>}
+      
       {/* Sidebar with chat rooms */}
       <div className="sidebar">
         <div className="create-room">
@@ -222,14 +220,15 @@ function ChatRoom({ userData, onLogout }) {
         </div>
 
         <div className="message-input">
-          <input
-            type="text"
-            placeholder={`Message #${selectedRoom?.name}`}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          />
-          <button onClick={handleSendMessage}>Send</button>
+          <form onSubmit={handleSendMessage}>
+            <input
+              type="text"
+              placeholder={`Message #${selectedRoom?.name}`}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+            />
+            <button type="submit">Send</button>
+          </form>
         </div>
       </div>
 

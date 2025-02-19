@@ -1,6 +1,14 @@
-const API_BASE_URL = import.meta.env.DEV 
-  ? 'https://localhost:7001'  // Development
-  : '/api';                   // Production
+const API_BASE_URL = 'https://localhost:7001/api';
+
+// Export API base URL for use in components
+export { API_BASE_URL };
+
+const defaultOptions = {
+    credentials: 'include',
+    headers: {
+        'Content-Type': 'application/json'
+    }
+};
 
 // Add error handling wrapper
 const fetchWithErrorHandling = async (url, options = {}) => {
@@ -26,106 +34,129 @@ const fetchWithErrorHandling = async (url, options = {}) => {
   }
 };
 
-export const loginUser = async (username) => {
-  return fetchWithErrorHandling(`${API_BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    body: JSON.stringify({ username })
-  });
-};
+export async function loginUser(username) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ username }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Login failed');
+    }
+    
+    // Store username in localStorage on successful login
+    localStorage.setItem('username', username);
+    
+    // Return a basic user object
+    return {
+      username,
+      isLoggedIn: true
+    };
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
+}
 
 export const loadChatRooms = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/chat/chatrooms`);
-  return response.json();
+  try {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', 
+    });
+    
+    if (!response.ok) {
+      throw new Error('Login failed');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Login error:', error);
+    return false;
+  }
 };
 
 export const saveUserSession = (userData) => {
   localStorage.setItem('userSession', JSON.stringify(userData));
 };
 
-export const getUserSession = () => {
-  const session = localStorage.getItem('userSession');
-  return session ? JSON.parse(session) : null;
-};
+// Instead of getUserSession, we'll check localStorage
+export function checkLocalSession() {
+  const username = localStorage.getItem('username');
+  return username ? { username, isLoggedIn: true } : null;
+}
 
 export const clearUserSession = () => {
   localStorage.removeItem('userSession');
 };
 
 // Add logout API call
-export const logoutUser = async (username) => {
+export async function logoutUser() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(username)
+      credentials: 'include',
     });
 
     if (!response.ok) {
       throw new Error('Logout failed');
     }
 
-    clearUserSession();
+    // Clear stored username on logout
+    localStorage.removeItem('username');
+    return true;
   } catch (error) {
     console.error('Logout error:', error);
-    // Still clear the local session even if the API call fails
-    clearUserSession();
     throw error;
   }
-};
+}
 
-export const getAllChats = async (userId) => {
+export const getAllChats = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat?userId=${userId}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch chats');
-    }
-    return await response.json();
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/chat`);
+    return response;
   } catch (error) {
+    console.error('Failed to fetch chats:', error);
     throw error;
   }
 };
 
-export const createChat = async (chat, userId) => {
+export const createChat = async (chatName) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
-        chat,
-        userId
+        name: chatName
       })
     });
-    if (!response.ok) {
-      throw new Error('Failed to create chat');
-    }
-    return await response.json();
+    return response;
   } catch (error) {
+    console.error('Failed to create chat:', error);
     throw error;
   }
 };
 
-export const postMessage = async (message, userId) => {
+export const postMessage = async (message, chatRoomId, userId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/chat/message`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
-        message,
-        userId
+        content: message,
+        chatRoomId: chatRoomId,
+        userId: userId
       })
     });
-    if (!response.ok) {
-      throw new Error('Failed to post message');
-    }
-    return await response.json();
+    return response;
   } catch (error) {
+    console.error('Failed to post message:', error);
     throw error;
   }
 }; 
