@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import '../styles/ChatRoom.css'
 import logo from '../assets/logo.png'
-import { getAllChats, createChat, postMessage } from '../services/api'
+import { getAllChats, createChat, postMessage, getChatRoomMembers, getMessages } from '../services/api'
+import Toast from './Toast'
 
 function ChatRoom({ userData, onLogout }) {
   const [chatRooms, setChatRooms] = useState([])
@@ -16,6 +17,8 @@ function ChatRoom({ userData, onLogout }) {
   const [editingMessageId, setEditingMessageId] = useState(null)
   const [editMessageText, setEditMessageText] = useState('')
   const [error, setError] = useState(null)
+  const [toast, setToast] = useState({ message: '', type: 'error' })
+  const [roomMembers, setRoomMembers] = useState([]);
   
   // Mock data for chat members - replace this with actual data from your API
   const [chatMembers] = useState([
@@ -23,6 +26,16 @@ function ChatRoom({ userData, onLogout }) {
     { id: 2, username: 'User2' },
     { id: 3, username: 'User3' },
   ])
+
+  // Show toast notification
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+  };
+
+  // Clear toast notification
+  const clearToast = () => {
+    setToast({ message: '', type: 'error' });
+  };
 
   // Load chat rooms when component mounts
   useEffect(() => {
@@ -34,7 +47,7 @@ function ChatRoom({ userData, onLogout }) {
       const chats = await getAllChats(userData.id);
       setChatRooms(chats);
     } catch (error) {
-      setError('Failed to load chats');
+      showToast('Failed to load chats');
       console.error(error);
     }
   };
@@ -48,8 +61,9 @@ function ChatRoom({ userData, onLogout }) {
       setChatRooms([...chatRooms, newChat]);
       setNewChatRoomName('');
       setShowCreateForm(false);
+      showToast('Chat room created successfully', 'success');
     } catch (error) {
-      setError('Failed to create chat');
+      showToast('Failed to create chat');
       console.error(error);
     }
   };
@@ -60,18 +74,14 @@ function ChatRoom({ userData, onLogout }) {
 
     try {
       const userSession = JSON.parse(localStorage.getItem('userSession'));
-      const messageData = {
-        text: newMessage,
-        chatRoomId: selectedRoom.id,
-        timestamp: new Date().toISOString(),
-      };
-
-      await postMessage(messageData, selectedRoom.id, userSession.id);
+      await postMessage(newMessage, selectedRoom.id, userSession.userId);
+      
+      // Clear input and refresh messages
       setNewMessage('');
-      loadChatRooms();
+      loadMessages(selectedRoom.id);
     } catch (error) {
-      setError('Failed to send message');
-      console.error(error);
+      console.error('Failed to send message:', error);
+      showToast('Failed to send message');
     }
   };
 
@@ -81,6 +91,7 @@ function ChatRoom({ userData, onLogout }) {
       console.log(`Adding user ${newUser} to room ${selectedRoom.id}`)
       setNewUser('')
       setShowAddUserForm(false)
+      showToast('User added to chat', 'success');
     }
   }
 
@@ -106,9 +117,46 @@ function ChatRoom({ userData, onLogout }) {
     setMessages(messages.filter(message => message.id !== messageId))
   }
 
+  // Add function to load members
+  const loadMembers = async (roomId) => {
+    if (!roomId) return;
+    
+    try {
+      const members = await getChatRoomMembers(roomId);
+      setRoomMembers(members);
+    } catch (error) {
+      console.error('Failed to load members:', error);
+      showToast('Failed to load chat members');
+    }
+  };
+  
+  // Update handleRoomSelect to also load members
+  const handleRoomSelect = async (room) => {
+    setSelectedRoom(room);
+    await loadMessages(room.id);
+    await loadMembers(room.id);
+  };
+
+  const loadMessages = async (roomId) => {
+    try {
+      // This function isn't implemented yet in your API, so I'll create a stub
+      // You'll need to implement getMessages in your api.js file
+      const messagesData = await getMessages(roomId);
+      setMessages(messagesData);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+      showToast('Failed to load messages');
+    }
+  };
+
   return (
     <div className="chat-container">
-      {error && <div className="error-message">{error}</div>}
+      {/* Add Toast component */}
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        onClose={clearToast}
+      />
       
       {/* Sidebar with chat rooms */}
       <div className="sidebar">
@@ -124,15 +172,15 @@ function ChatRoom({ userData, onLogout }) {
             >
               <div 
                 className="room-name"
-                onClick={() => setSelectedRoom(room)}
+                onClick={() => handleRoomSelect(room)}
               >
                 # {room.name}
               </div>
               <button 
                 className="add-user-btn"
                 onClick={() => {
-                  setSelectedRoom(room)
-                  setShowAddUserForm(true)
+                  setSelectedRoom(room);
+                  setShowAddUserForm(true);
                 }}
               >
                 +
@@ -270,17 +318,21 @@ function ChatRoom({ userData, onLogout }) {
         </div>
       )}
 
-      {/* Members modal */}
+      {/* Members Modal */}
       {showMembersModal && (
         <div className="modal-overlay">
-          <div className="modal">
-            <h2>Chat Members</h2>
+          <div className="modal-content">
+            <h3>Chat Room Members</h3>
             <div className="members-list">
-              {chatMembers.map(member => (
-                <div key={member.id} className="member-item">
-                  <span className="member-username">{member.username}</span>
-                </div>
-              ))}
+              {roomMembers && roomMembers.length > 0 ? (
+                roomMembers.map(member => (
+                  <div key={member.id} className="member-item">
+                    <span className="member-username">{member.username}</span>
+                  </div>
+                ))
+              ) : (
+                <p>No members found or loading...</p>
+              )}
             </div>
             <div className="modal-buttons">
               <button onClick={() => setShowMembersModal(false)}>Close</button>

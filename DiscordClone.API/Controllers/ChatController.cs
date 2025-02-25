@@ -4,6 +4,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using DiscordClone.ViewModels;
 using DiscordClone.ViewModels.ChatRoom;
+using DiscordClone.Data.Models;
+using DiscordClone.Services.Data;
+using Microsoft.Extensions.Logging;
+using DiscordClone.ViewModels.User;
 
 namespace DiscordClone.API.Controllers
 {
@@ -13,9 +17,14 @@ namespace DiscordClone.API.Controllers
     public class ChatController : Controller
     {
         private readonly IChatService _chatService;
-        public ChatController(IChatService chatService)
+        private readonly IUserService _userService;
+        private readonly ILogger<ChatController> _logger;
+
+        public ChatController(IChatService chatService, IUserService userService, ILogger<ChatController> logger)
         {
             _chatService = chatService;
+            _userService = userService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -166,6 +175,61 @@ namespace DiscordClone.API.Controllers
                 return NotFound();
             }
             return Ok();
+        }
+
+        /// <summary>
+        /// Get all members of a specific chat room
+        /// </summary>
+        /// <param name="chatRoomId">The ID of the chat room</param>
+        /// <returns>List of users in the chat room</returns>
+        [HttpGet("{chatRoomId}/members")]
+        public async Task<IActionResult> GetChatRoomMembers(string chatRoomId)
+        {
+            try
+            {
+                _logger.LogInformation($"Getting members for chat room: {chatRoomId}");
+
+                // Verify chat room exists
+                var chatRoom = await _chatService.GetChatByIdAsync(Guid.Parse(chatRoomId));
+                if (chatRoom == null)
+                {
+                    _logger.LogWarning($"Chat room not found: {chatRoomId}");
+                    return NotFound(new { message = "Chat room not found" });
+                }
+
+                // Get current user ID from claims
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("User ID not found in claims");
+                    return Unauthorized(new { message = "User not authorized" });
+                }
+
+                // Verify user is a member of the chat room
+                bool isMember = await _chatService.IsUserInChatRoomAsync(Guid.Parse(userId), Guid.Parse(chatRoomId));
+                if (!isMember)
+                {
+                    _logger.LogWarning($"User {userId} is not a member of chat room {chatRoomId}");
+                    return Forbid();
+                }
+
+                // Get all members of the chat room
+                var members = await _chatService.GetChatRoomMembersAsync(Guid.Parse(chatRoomId));
+
+                // Map to view models to avoid exposing sensitive information
+                var memberViewModels = members.Select(m => new UserViewModel
+                {
+                    Id = m.Id,
+                    Username = m.UserName,
+                }).ToList();
+
+                return Ok(memberViewModels);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting members for chat room {chatRoomId}");
+                return StatusCode(500, new { message = "Internal server error" });
+            }
         }
     }
 }

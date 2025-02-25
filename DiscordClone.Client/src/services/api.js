@@ -159,4 +159,30 @@ export const postMessage = async (message, chatRoomId, userId) => {
     console.error('Failed to post message:', error);
     throw error;
   }
-}; 
+};
+
+// Add function to get chat room members
+export async function getChatRoomMembers(chatRoomId) {
+  try {
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/members`, {
+      method: 'GET'
+    });
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch chat room members:', error);
+    throw error;
+  }
+}
+
+// Add function to get messages for a chat room
+export async function getMessages(chatRoomId) {
+  try {
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/messages`, {
+      method: 'GET'
+    });
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch messages:', error);
+    throw error;
+  }
+} 

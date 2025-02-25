@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DiscordClone.Data.Context
 {
-    public class ApplicationDbContext : IdentityDbContext<User,IdentityRole<Guid> ,Guid>
+    public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public new DbSet<User> Users { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<ChatRoom> ChatRooms { get; set; }
-
-
+        public DbSet<ChatRoomUser> ChatRoomUsers { get; set; }
+             
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -34,6 +34,7 @@ namespace DiscordClone.Data.Context
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Configure ChatRoom relationships
             modelBuilder.Entity<ChatRoom>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -41,28 +42,32 @@ namespace DiscordClone.Data.Context
                 entity.HasOne(c => c.Owner)
                     .WithMany()
                     .HasForeignKey(c => c.OwnerId)
-                    .OnDelete(DeleteBehavior.Restrict);  
-
-                entity.HasMany(c => c.Users)
-                    .WithMany(u => u.ChatRooms)
-                    .UsingEntity<Dictionary<string, object>>(
-                        "ChatRoomUser",
-                        j => j
-                            .HasOne<User>()
-                            .WithMany()
-                            .HasForeignKey("UserId")
-                            .OnDelete(DeleteBehavior.Cascade),
-                        j => j
-                            .HasOne<ChatRoom>()
-                            .WithMany()
-                            .HasForeignKey("ChatRoomId")
-                            .OnDelete(DeleteBehavior.Cascade),
-                        j =>
-                        {
-                            j.HasKey("ChatRoomId", "UserId");
-                            j.ToTable("ChatRoomUser");
-                        });
+                    .OnDelete(DeleteBehavior.Restrict);
             });
+
+            // Configure ChatRoomUser join entity
+            modelBuilder.Entity<ChatRoomUser>(entity =>
+            {
+                entity.HasKey(e => new { e.ChatRoomId, e.UserId });
+                
+                entity.HasOne(cru => cru.ChatRoom)
+                    .WithMany()
+                    .HasForeignKey(cru => cru.ChatRoomId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasOne(cru => cru.User)
+                    .WithMany()
+                    .HasForeignKey(cru => cru.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.ToTable("ChatRoomUsers");
+            });
+
+            // Configure many-to-many relationship between ChatRoom and User
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.ChatRooms)
+                .WithMany(c => c.Users)
+                .UsingEntity<ChatRoomUser>();
         }
     }
 }

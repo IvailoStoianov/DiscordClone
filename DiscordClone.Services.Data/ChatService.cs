@@ -3,6 +3,7 @@ using DiscordClone.Data.Repository;
 using DiscordClone.Services.Data.Interfaces;
 using DiscordClone.ViewModels;
 using DiscordClone.ViewModels.ChatRoom;
+using Microsoft.EntityFrameworkCore;
 namespace DiscordClone.Services.Data
 {
     public class ChatService : IChatService
@@ -29,7 +30,7 @@ namespace DiscordClone.Services.Data
             {
                 throw new ArgumentException("User not found");
             }
-            var chats = await _chatRoomRepository.GetAllAsync();
+            var chats = await _chatRoomRepository.GetChatRoomsForUserAsync(userId);
             return chats.Select(chat => new ChatRoomViewModel
             {
                 Id = chat.Id,
@@ -181,6 +182,17 @@ namespace DiscordClone.Services.Data
             chat.Users.Remove(user);
             await _chatRoomRepository.UpdateAsync(chat);
             return true;
+        }
+
+
+        public async Task<bool> IsUserInChatRoomAsync(Guid userId, Guid chatRoomId)
+        {
+            return await _chatRoomRepository.IsUserInChatRoomAsync(userId, chatRoomId);
+        }
+
+        public async Task<IEnumerable<User>> GetChatRoomMembersAsync(Guid chatRoomId)
+        {
+            return await _chatRoomRepository.GetChatRoomMembersAsync(chatRoomId);
         }
     }
 }
