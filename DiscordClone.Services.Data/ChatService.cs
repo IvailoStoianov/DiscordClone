@@ -45,6 +45,13 @@ namespace DiscordClone.Services.Data
             {
                 Id = chat.Id,
                 Name = chat.Name,
+                Messages = chat.Messages.Select(m => new MessageViewModel
+                {
+                    Id = m.Id,
+                    Content = m.Content,
+                    UserId = m.UserId,
+                    ChatRoomId = m.ChatRoomId,
+                })
             } : null;
         }
         public async Task<Guid> CreateChatAsync(ChatRoomInputModel chat, Guid userId)
