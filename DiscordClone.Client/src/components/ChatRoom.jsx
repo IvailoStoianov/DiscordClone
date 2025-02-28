@@ -1,31 +1,16 @@
 import { useState, useEffect } from 'react'
 import '../styles/ChatRoom.css'
-import logo from '../assets/logo.png'
-import { getAllChats, createChat, postMessage, getChatRoomMembers, getMessages } from '../services/api'
+import { getAllChats, getMessages, getChatRoomMembers, postMessage } from '../services/api'
 import Toast from './Toast'
 
 function ChatRoom({ userData, onLogout }) {
   const [chatRooms, setChatRooms] = useState([])
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showAddUserForm, setShowAddUserForm] = useState(false)
-  const [newChatRoomName, setNewChatRoomName] = useState('')
-  const [newUser, setNewUser] = useState('')
   const [selectedRoom, setSelectedRoom] = useState(null)
-  const [showMembersModal, setShowMembersModal] = useState(false)
-  const [editingMessageId, setEditingMessageId] = useState(null)
-  const [editMessageText, setEditMessageText] = useState('')
-  const [error, setError] = useState(null)
   const [toast, setToast] = useState({ message: '', type: 'error' })
-  const [roomMembers, setRoomMembers] = useState([]);
-  
-  // Mock data for chat members - replace this with actual data from your API
-  const [chatMembers] = useState([
-    { id: 1, username: 'User1' },
-    { id: 2, username: 'User2' },
-    { id: 3, username: 'User3' },
-  ])
+  const [isLoading, setIsLoading] = useState(false)
+  const [roomMembers, setRoomMembers] = useState([])
 
   // Show toast notification
   const showToast = (message, type = 'error') => {
@@ -39,33 +24,64 @@ function ChatRoom({ userData, onLogout }) {
 
   // Load chat rooms when component mounts
   useEffect(() => {
-    loadChatRooms();
-  }, [userData.id]);
+    if (userData && userData.id) {
+      loadChatRooms();
+    }
+  }, [userData]);
 
   const loadChatRooms = async () => {
+    setIsLoading(true);
     try {
       const chats = await getAllChats(userData.id);
-      setChatRooms(chats);
+      console.log("Chat rooms loaded:", chats);
+      
+      // Make sure we always have an array, even if the API returns something else
+      setChatRooms(Array.isArray(chats) ? chats : []);
     } catch (error) {
+      console.error("Failed to load chats:", error);
       showToast('Failed to load chats');
-      console.error(error);
+      setChatRooms([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
-    if (!newChatRoomName.trim()) return;
-
+  const loadMessages = async (roomId) => {
+    if (!roomId) return;
+    
+    setIsLoading(true);
     try {
-      const newChat = await createChat(newChatRoomName);
-      setChatRooms([...chatRooms, newChat]);
-      setNewChatRoomName('');
-      setShowCreateForm(false);
-      showToast('Chat room created successfully', 'success');
+      const messagesData = await getMessages(roomId);
+      console.log("Messages loaded for room", roomId, ":", messagesData);
+      
+      // Make sure we're setting an array to state
+      setMessages(Array.isArray(messagesData) ? messagesData : []);
     } catch (error) {
-      showToast('Failed to create chat');
-      console.error(error);
+      console.error('Failed to load messages:', error);
+      showToast('Failed to load messages, but you can still chat');
+      setMessages([]);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const loadMembers = async (roomId) => {
+    if (!roomId) return;
+    
+    try {
+      const members = await getChatRoomMembers(roomId);
+      setRoomMembers(members || []);
+    } catch (error) {
+      showToast('Failed to load room members');
+      console.error(error);
+      setRoomMembers([]);
+    }
+  };
+
+  const handleRoomSelect = async (room) => {
+    setSelectedRoom(room);
+    await loadMessages(room.id);
+    await loadMembers(room.id);
   };
 
   const handleSendMessage = async (e) => {
@@ -73,132 +89,72 @@ function ChatRoom({ userData, onLogout }) {
     if (!newMessage.trim() || !selectedRoom) return;
 
     try {
-      const userSession = JSON.parse(localStorage.getItem('userSession'));
-      await postMessage(newMessage, selectedRoom.id, userSession.userId);
+      setIsLoading(true);
+      await postMessage(selectedRoom.id, newMessage);
       
-      // Clear input and refresh messages
+      // Clear the input field
       setNewMessage('');
-      loadMessages(selectedRoom.id);
+      
+      // Reload messages to show the new message
+      await loadMessages(selectedRoom.id);
+      
+      // Success toast
+      showToast('Message sent', 'success');
     } catch (error) {
       console.error('Failed to send message:', error);
       showToast('Failed to send message');
-    }
-  };
-
-  const handleAddUser = () => {
-    if (newUser.trim()) {
-      // Here you would typically make an API call to add the user
-      console.log(`Adding user ${newUser} to room ${selectedRoom.id}`)
-      setNewUser('')
-      setShowAddUserForm(false)
-      showToast('User added to chat', 'success');
-    }
-  }
-
-  const handleEditMessage = (messageId) => {
-    const message = messages.find(m => m.id === messageId)
-    if (message) {
-      setEditingMessageId(messageId)
-      setEditMessageText(message.text)
-    }
-  }
-
-  const handleSaveEdit = (messageId) => {
-    setMessages(messages.map(message => 
-      message.id === messageId 
-        ? { ...message, text: editMessageText }
-        : message
-    ))
-    setEditingMessageId(null)
-    setEditMessageText('')
-  }
-
-  const handleDeleteMessage = (messageId) => {
-    setMessages(messages.filter(message => message.id !== messageId))
-  }
-
-  // Add function to load members
-  const loadMembers = async (roomId) => {
-    if (!roomId) return;
-    
-    try {
-      const members = await getChatRoomMembers(roomId);
-      setRoomMembers(members);
-    } catch (error) {
-      console.error('Failed to load members:', error);
-      showToast('Failed to load chat members');
-    }
-  };
-  
-  // Update handleRoomSelect to also load members
-  const handleRoomSelect = async (room) => {
-    setSelectedRoom(room);
-    await loadMessages(room.id);
-    await loadMembers(room.id);
-  };
-
-  const loadMessages = async (roomId) => {
-    try {
-      // This function isn't implemented yet in your API, so I'll create a stub
-      // You'll need to implement getMessages in your api.js file
-      const messagesData = await getMessages(roomId);
-      setMessages(messagesData);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-      showToast('Failed to load messages');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="chat-container">
-      {/* Add Toast component */}
-      <Toast 
-        message={toast.message}
-        type={toast.type}
-        onClose={clearToast}
-      />
-      
-      {/* Sidebar with chat rooms */}
+      {/* Sidebar */}
       <div className="sidebar">
         <div className="create-room">
-          <button onClick={() => setShowCreateForm(true)}>Create Chat Room</button>
+          <button onClick={() => showToast('Create room feature coming soon', 'info')}>
+            Create New Room
+          </button>
         </div>
-        
         <div className="rooms-list">
-          {chatRooms.map(room => (
-            <div 
-              key={room.id} 
-              className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}
-            >
-              <div 
-                className="room-name"
-                onClick={() => handleRoomSelect(room)}
+          {isLoading && chatRooms.length === 0 ? (
+            <div style={{ padding: '16px', color: '#8e9297' }}>Loading...</div>
+          ) : chatRooms.length > 0 ? (
+            chatRooms.map(room => (
+              <div
+                key={room.id}
+                className={`room-item ${selectedRoom?.id === room.id ? 'active' : ''}`}
               >
-                # {room.name}
+                <div
+                  className="room-name"
+                  onClick={() => handleRoomSelect(room)}
+                >
+                  {room.name}
+                </div>
+                <button 
+                  className="add-user-btn"
+                  onClick={() => showToast('Add user feature coming soon', 'info')}
+                >
+                  +
+                </button>
               </div>
-              <button 
-                className="add-user-btn"
-                onClick={() => {
-                  setSelectedRoom(room);
-                  setShowAddUserForm(true);
-                }}
-              >
-                +
-              </button>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div style={{ padding: '16px', color: '#8e9297' }}>No rooms available</div>
+          )}
         </div>
       </div>
 
-      {/* Main chat area */}
+      {/* Chat Area */}
       <div className="chat-area">
         <div className="chat-header">
-          <h2>{selectedRoom ? `# ${selectedRoom.name}` : 'Select a room'}</h2>
+          <h2>{selectedRoom ? selectedRoom.name : 'Select a room'}</h2>
           <div className="header-buttons">
-            <button 
+            <button
               className="members-btn"
-              onClick={() => setShowMembersModal(true)}
               disabled={!selectedRoom}
+              onClick={() => showToast(`Room has ${roomMembers.length} members`, 'info')}
             >
               Members
             </button>
@@ -207,141 +163,67 @@ function ChatRoom({ userData, onLogout }) {
             </button>
           </div>
         </div>
-        
-        <div className="messages">
-          {messages.map((message, index) => {
-            const showUserInfo = index === 0 || 
-              messages[index - 1].user.username !== message.user.username;
 
-            return (
-              <div key={message.id} className={`message ${showUserInfo ? '' : 'consecutive'}`}>
-                {showUserInfo && (
-                  <img 
-                    src={message.user.avatarUrl} 
-                    alt="avatar" 
-                    className="user-avatar"
-                  />
-                )}
-                <div className="message-content">
-                  {showUserInfo && (
-                    <div className="message-header">
-                      <span className="username">{message.user.username}</span>
-                      <span className="timestamp">{message.timestamp}</span>
-                    </div>
-                  )}
-                  {editingMessageId === message.id ? (
-                    <div className="edit-message">
-                      <input
-                        type="text"
-                        value={editMessageText}
-                        onChange={(e) => setEditMessageText(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit(message.id)}
-                      />
-                      <div className="edit-buttons">
-                        <button onClick={() => handleSaveEdit(message.id)}>Save</button>
-                        <button onClick={() => setEditingMessageId(null)}>Cancel</button>
+        {!selectedRoom ? (
+          <div className="no-room-selected">
+            <p>Select a room to start chatting</p>
+          </div>
+        ) : (
+          <>
+            <div className="messages">
+              {isLoading ? (
+                <div style={{ padding: '16px', color: '#8e9297', alignSelf: 'center' }}>
+                  Loading messages...
+                </div>
+              ) : messages.length > 0 ? (
+                messages.map((message, index) => (
+                  <div key={message.id} className="message">
+                    <img 
+                      src="https://via.placeholder.com/40" 
+                      alt="User Avatar" 
+                      className="user-avatar" 
+                    />
+                    <div className="message-content">
+                      <div className="message-header">
+                        <span className="username">{message.username || 'Unknown User'}</span>
+                        <span className="timestamp">{message.formattedTimestamp || 'Unknown time'}</span>
                       </div>
+                      <div className="message-text">{message.content}</div>
                     </div>
-                  ) : (
-                    <div className="message-text">
-                      {message.text}
-                    </div>
-                  )}
-                </div>
-                <div className="message-actions">
-                  <button 
-                    className="edit-btn"
-                    onClick={() => handleEditMessage(message.id)}
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDeleteMessage(message.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="message-input">
-          <form onSubmit={handleSendMessage}>
-            <input
-              type="text"
-              placeholder={`Message #${selectedRoom?.name}`}
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-            />
-            <button type="submit">Send</button>
-          </form>
-        </div>
-      </div>
-
-      {/* Create room modal */}
-      {showCreateForm && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Create New Chat Room</h2>
-            <input
-              type="text"
-              placeholder="Chat room name"
-              value={newChatRoomName}
-              onChange={(e) => setNewChatRoomName(e.target.value)}
-            />
-            <div className="modal-buttons">
-              <button onClick={handleCreateRoom}>Create</button>
-              <button onClick={() => setShowCreateForm(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add user modal */}
-      {showAddUserForm && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Add User to {selectedRoom?.name}</h2>
-            <input
-              type="text"
-              placeholder="Enter username"
-              value={newUser}
-              onChange={(e) => setNewUser(e.target.value)}
-            />
-            <div className="modal-buttons">
-              <button onClick={handleAddUser}>Add User</button>
-              <button onClick={() => setShowAddUserForm(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Members Modal */}
-      {showMembersModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Chat Room Members</h3>
-            <div className="members-list">
-              {roomMembers && roomMembers.length > 0 ? (
-                roomMembers.map(member => (
-                  <div key={member.id} className="member-item">
-                    <span className="member-username">{member.username}</span>
                   </div>
                 ))
               ) : (
-                <p>No members found or loading...</p>
+                <div style={{ padding: '16px', color: '#8e9297', alignSelf: 'center' }}>
+                  No messages yet
+                </div>
               )}
             </div>
-            <div className="modal-buttons">
-              <button onClick={() => setShowMembersModal(false)}>Close</button>
+
+            <div className="message-input">
+              <form onSubmit={handleSendMessage}>
+                <input
+                  type="text"
+                  placeholder={selectedRoom ? `Message #${selectedRoom.name}` : "Select a room first"}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={!selectedRoom}
+                />
+                <button type="submit" disabled={!selectedRoom || !newMessage.trim()}>Send</button>
+              </form>
             </div>
-          </div>
-        </div>
+          </>
+        )}
+      </div>
+
+      {toast.message && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={clearToast} 
+        />
       )}
     </div>
-  )
+  );
 }
 
-export default ChatRoom 
+export default ChatRoom; 

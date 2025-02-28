@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import ChatRoom from './components/ChatRoom'
 import { loginUser, logoutUser, checkLocalSession } from './services/api'
+import Toast from './components/Toast'
 
 function App() {
   const [username, setUsername] = useState('')
@@ -9,17 +10,33 @@ function App() {
   const [error, setError] = useState('')
   const [userData, setUserData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [toast, setToast] = useState({ message: '', type: 'error' })
 
   // Check for existing session on component mount
   useEffect(() => {
-    const session = checkLocalSession();
-    if (session) {
-      setIsLoggedIn(true);
-      setUserData(session);
-      setUsername(session.username);
+    try {
+      const session = checkLocalSession();
+      if (session) {
+        setIsLoggedIn(true);
+        setUserData(session);
+        setUsername(session.username || '');
+      }
+    } catch (error) {
+      console.error("Error checking local session:", error);
+      // Clear any potentially corrupted data
+      localStorage.removeItem('userSession');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
+
+  const showToast = (message, type = 'error') => {
+    setToast({ message, type });
+  };
+
+  const clearToast = () => {
+    setToast({ message: '', type: 'error' });
+  };
 
   const handleJoin = async () => {
     if (username.trim()) {
@@ -30,6 +47,7 @@ function App() {
         setError('');
       } catch (error) {
         setError(error.message || 'Login failed');
+        showToast(error.message || 'Login failed', 'error');
       }
     }
   };
@@ -37,13 +55,11 @@ function App() {
   const handleLogout = async () => {
     try {
       await logoutUser();
-      setIsLoggedIn(false);
-      setUserData(null);
-      setUsername('');
-      setError('');
     } catch (error) {
       console.error('Logout error:', error);
-      // Still logout locally even if the API call fails
+      showToast('Logout failed, but session cleared locally', 'info');
+    } finally {
+      // Always logout locally even if API call fails
       setIsLoggedIn(false);
       setUserData(null);
       setUsername('');
@@ -56,7 +72,18 @@ function App() {
   }
 
   if (isLoggedIn && userData) {
-    return <ChatRoom userData={userData} onLogout={handleLogout} />;
+    return (
+      <>
+        <ChatRoom userData={userData} onLogout={handleLogout} />
+        {toast.message && (
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={clearToast} 
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -73,6 +100,13 @@ function App() {
         <button onClick={handleJoin}>Join</button>
         {error && <div className="error-message">{error}</div>}
       </div>
+      {toast.message && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={clearToast} 
+        />
+      )}
     </div>
   );
 }

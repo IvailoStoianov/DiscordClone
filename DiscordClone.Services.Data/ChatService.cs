@@ -122,11 +122,10 @@ namespace DiscordClone.Services.Data
             {
                 Content = message.Content,
                 ChatRoomId = message.ChatRoomId,
-                UserId = message.UserId,
+                UserId = userId,  
             };
             await _messageRepository.AddAsync(newMessage);
             return newMessage.Id;
-
         }
 
         public async Task<bool> SoftDeleteMessageAsync(Guid id, Guid userId)
