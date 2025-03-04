@@ -137,7 +137,7 @@ export async function createChat(name) {
 }
 
 export async function addUserToChat(chatRoomId, username) {
-  return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/members`, {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/users/${username}`, {
     method: 'POST',
     body: JSON.stringify({ username })
   });
@@ -147,6 +147,9 @@ export async function getMessages(chatRoomId) {
   try {
     // Use the chat/{id} endpoint which should return the chat with messages
     const chat = await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}`);
+    
+    // Log the response to see what we're getting
+    console.log("Full chat room response:", chat);
     
     // Return the messages array from the chat object
     return chat && chat.messages ? chat.messages : [];
@@ -247,5 +250,11 @@ export async function createChatRoom(name) {
   return await fetchWithErrorHandling(`${API_BASE_URL}/chat`, {
     method: 'POST',
     body: JSON.stringify({ name })
+  });
+}
+
+export async function removeUserFromChat(chatRoomId, username) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/users/${username}`, {
+    method: 'DELETE'
   });
 } 

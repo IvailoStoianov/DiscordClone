@@ -50,7 +50,10 @@ namespace DiscordClone.Services.Data
                     Id = m.Id,
                     Content = m.Content,
                     UserId = m.UserId,
+                    UserName = m.User.UserName,
                     ChatRoomId = m.ChatRoomId,
+                    FormattedTimestamp = m.CreatedAt.ToLocalTime().ToString("MM/dd/yyyy HH:mm"),
+                    Timestamp = m.CreatedAt.ToLocalTime()
                 })
             } : null;
         }
@@ -122,7 +125,8 @@ namespace DiscordClone.Services.Data
             {
                 Content = message.Content,
                 ChatRoomId = message.ChatRoomId,
-                UserId = userId,  
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
             };
             await _messageRepository.AddAsync(newMessage);
             return newMessage.Id;
@@ -148,29 +152,43 @@ namespace DiscordClone.Services.Data
             return true;
         }
 
-        public async Task<bool> AddUserToChatAsync(Guid chatId, Guid userId)
+        public async Task<bool> AddUserToChatAsync(Guid chatId, Guid userId, string userName)
         {
+            var user = await _userRepository.GetByUsernameAsync(userName);
+            if (user == null)
+            {
+                return false;
+            }
             var chat = await _chatRoomRepository.GetByIdAsync(chatId);
             if (chat == null)
             {
                 return false;
             }
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null)
+            var chatAdmin = await _userRepository.GetByIdAsync(userId);
+            if (chatAdmin == null)
             {
                 return false;
             }
-            if(chat.Users.FirstOrDefault(user) != null)
+            
+            if(chat.Users.Any(u => u.Id == user.Id))
             {
                 return false;
             }
+            
             chat.Users.Add(user);
             await _chatRoomRepository.UpdateAsync(chat);
+            
             return true;
         }
 
-        public async Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId)
+        public async Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId, string username)
         {
+            var userTBRemoved = await _userRepository.GetByUsernameAsync(username);
+            if(userTBRemoved == null)
+            {
+                return false;
+            }
+
             var chat = await _chatRoomRepository.GetByIdAsync(chatId);
             if (chat == null)
             {
@@ -181,11 +199,11 @@ namespace DiscordClone.Services.Data
             {
                 return false;
             }
-            if (chat.Users.FirstOrDefault(user) == null)
+            if (chat.Users.FirstOrDefault(userTBRemoved) == null)
             {
                 return false;
             }
-            chat.Users.Remove(user);
+            chat.Users.Remove(userTBRemoved);
             await _chatRoomRepository.UpdateAsync(chat);
             return true;
         }

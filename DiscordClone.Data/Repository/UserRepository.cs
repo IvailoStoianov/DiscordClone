@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DiscordClone.Data.Repository
 {
-    public class UserRepository : IRepository<User>
+    public class UserRepository : IRepository<User>, IUserRepository
     {
         private readonly ApplicationDbContext _context;
 
@@ -60,6 +60,10 @@ namespace DiscordClone.Data.Repository
             user.IsDeleted = true;
             await _context.SaveChangesAsync();
             return true;
+        }
+        public async Task<User?> GetByUsernameAsync(string username)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.UserName == username);
         }
     }
 }

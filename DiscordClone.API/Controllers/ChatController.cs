@@ -144,15 +144,15 @@ namespace DiscordClone.API.Controllers
         }
 
         [HttpPost]
-        [Route("{id}/users/{userId}")]
-        public async Task<IActionResult> AddUserToChat(string chatId)
+        [Route("{chatId}/users/{username}")]
+        public async Task<IActionResult> AddUserToChat(string chatId, string username)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
             {
                 return Unauthorized();
             }
-            var result = await _chatService.AddUserToChatAsync(Guid.Parse(chatId), Guid.Parse(userId));
+            var result = await _chatService.AddUserToChatAsync(Guid.Parse(chatId), Guid.Parse(userId), username);
             if (!result)
             {
                 return NotFound();
@@ -161,15 +161,18 @@ namespace DiscordClone.API.Controllers
         }
 
         [HttpDelete]
-        [Route("{id}/users/{userId}")]
-        public async Task<IActionResult> RemoveUserFromChat(string chatId)
+        [Route("{chatId}/users/{userToRemoveId}")]
+        public async Task<IActionResult> RemoveUserFromChat(string chatId, string userToRemoveId)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
             {
                 return Unauthorized();
             }
-            var result = await _chatService.RemoveUserFromChatAsync(Guid.Parse(chatId), Guid.Parse(userId));
+            var result = await _chatService.RemoveUserFromChatAsync(
+                Guid.Parse(chatId), 
+                Guid.Parse(userId), 
+                userToRemoveId);
             if (!result)
             {
                 return NotFound();

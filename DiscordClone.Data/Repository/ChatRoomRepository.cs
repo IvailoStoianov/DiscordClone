@@ -44,7 +44,6 @@ namespace DiscordClone.Data.Repository
         public async Task<ChatRoom?> GetByIdAsync(Guid id)
         {
             return await _context.ChatRooms
-                .Include(c => c.Owner)
                 .Include(c => c.Users)
                 .Include(c => c.Messages)
                 .FirstOrDefaultAsync(c => c.Id == id);
