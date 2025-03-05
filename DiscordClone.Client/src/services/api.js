@@ -257,4 +257,10 @@ export async function removeUserFromChat(chatRoomId, username) {
   return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatRoomId}/users/${username}`, {
     method: 'DELETE'
   });
+}
+
+export async function deleteChat(chatId) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatId}?chatId=${chatId}`, {
+    method: 'DELETE'
+  });
 } 

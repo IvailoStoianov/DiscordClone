@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DiscordClone.Services.Data.Interfaces;
 using DiscordClone.ViewModels.User;
+using System.Security.Claims;
 
 namespace DiscordClone.API.Controllers
 {
@@ -19,14 +20,20 @@ namespace DiscordClone.API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginInputModel model)
         {
             var result = await _userService.LoginAsync(model.Username, HttpContext);
-            return result ? Ok() : Unauthorized();
+            if (!result)
+            {
+                return BadRequest(new { message = "Login failed" });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Ok(new { username = model.Username, id = userId });
         }
 
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var result = await _userService.LogoutAsync(HttpContext);
-            return result ? Ok() : NotFound();
+            await _userService.LogoutAsync(HttpContext);
+            return Ok(new { message = "Logged out successfully" });
         }
     }
 }

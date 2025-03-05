@@ -34,7 +34,6 @@ namespace DiscordClone.Data.Repository
             await _context.Users.AddAsync(entity);
             await _context.SaveChangesAsync();
         }
-
         public async Task UpdateAsync(User entity)
         {
             _context.Users.Update(entity);
@@ -50,6 +49,7 @@ namespace DiscordClone.Data.Repository
                 await _context.SaveChangesAsync();
             }
         }
+
         public async Task<bool> SoftDeleteAsync(Guid id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -57,13 +57,16 @@ namespace DiscordClone.Data.Repository
             {
                 return false;
             }
+
             user.IsDeleted = true;
             await _context.SaveChangesAsync();
             return true;
         }
+
         public async Task<User?> GetByUsernameAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.UserName == username);
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName == username);
         }
     }
 }

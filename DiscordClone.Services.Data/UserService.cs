@@ -6,9 +6,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
-
 namespace DiscordClone.Services.Data
 {
+
     public class UserService : IUserService
     {
         private readonly UserManager<User> _userManager;
@@ -18,16 +18,27 @@ namespace DiscordClone.Services.Data
             _userManager = userManager;
         }
 
+
+        /// <param name="username">The username to authenticate</param>
+        /// <param name="httpContext">The HTTP context for the current request</param>
+        /// <returns>True if login was successful, false otherwise</returns>
         public async Task<bool> LoginAsync(string username, HttpContext httpContext)
         {
             try
             {
-                // Try to find existing user
+                // Find the user by username
                 var user = await _userManager.FindByNameAsync(username);
+                
+                // If user doesn't exist, create a new one
                 if (user == null)
                 {
-                    // Create new user if not exists
-                    user = new User { UserName = username };
+                    user = new User
+                    {
+                        UserName = username,
+                        Email = $"{username}@example.com", // Default email
+                        EmailConfirmed = true // Auto-confirm for demo purposes
+                    };
+
                     var result = await _userManager.CreateAsync(user);
                     if (!result.Succeeded)
                     {
@@ -35,31 +46,23 @@ namespace DiscordClone.Services.Data
                     }
                 }
 
-                // Create claims
+                // Create claims for the user
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim("UserId", user.Id.ToString()) // Additional claim for redundancy
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email)
                 };
-               
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var authProperties = new AuthenticationProperties
+
+                // Create identity and sign in
+                var identity = new ClaimsIdentity(claims, "cookie");
+                var principal = new ClaimsPrincipal(identity);
+
+                await httpContext.SignInAsync("Cookies", principal, new AuthenticationProperties
                 {
                     IsPersistent = true,
-                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30),
-                    AllowRefresh = true
-                };
-
-                // Add logging or debugging here
-                Console.WriteLine($"User ID: {user.Id}");
-                Console.WriteLine($"Claims Count: {claims.Count}");
-                Console.WriteLine($"Authentication Scheme: {CookieAuthenticationDefaults.AuthenticationScheme}");
-
-                await httpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    new ClaimsPrincipal(claimsIdentity),
-                    authProperties);
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+                });
 
                 // Verify the user is authenticated after sign in
                 if (httpContext.User.Identity?.IsAuthenticated == true)
@@ -86,9 +89,11 @@ namespace DiscordClone.Services.Data
             }
         }
 
+        /// <param name="httpContext">The HTTP context for the current request</param>
+        /// <returns>True if logout was successful</returns>
         public async Task<bool> LogoutAsync(HttpContext httpContext)
         {
-            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await httpContext.SignOutAsync("Cookies");
             return true;
         }
     }

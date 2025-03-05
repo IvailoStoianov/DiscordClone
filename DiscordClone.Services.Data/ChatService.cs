@@ -6,6 +6,7 @@ using DiscordClone.ViewModels.ChatRoom;
 using Microsoft.EntityFrameworkCore;
 namespace DiscordClone.Services.Data
 {
+
     public class ChatService : IChatService
     {
         private readonly UserRepository _userRepository;
@@ -23,6 +24,7 @@ namespace DiscordClone.Services.Data
             _messageRepository = messageRepository;
         }
 
+
         public async Task<IEnumerable<ChatRoomViewModel>> GetAllChatsForUserAsync(Guid userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
@@ -30,6 +32,7 @@ namespace DiscordClone.Services.Data
             {
                 throw new ArgumentException("User not found");
             }
+            
             var chats = await _chatRoomRepository.GetChatRoomsForUserAsync(userId);
             return chats.Select(chat => new ChatRoomViewModel
             {
@@ -37,6 +40,7 @@ namespace DiscordClone.Services.Data
                 Name = chat.Name,
             });
         }
+
 
         public async Task<ChatRoomViewModel?> GetChatByIdAsync(Guid id)
         {
@@ -57,6 +61,7 @@ namespace DiscordClone.Services.Data
                 })
             } : null;
         }
+
         public async Task<Guid> CreateChatAsync(ChatRoomInputModel chat, Guid userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
@@ -64,6 +69,7 @@ namespace DiscordClone.Services.Data
             {
                 throw new ArgumentException("User not found");
             }
+            
             var newChat = new ChatRoom
             {
                 Name = chat.Name,
@@ -74,6 +80,7 @@ namespace DiscordClone.Services.Data
             return newChat.Id;
         }
 
+
         public async Task<bool> UpdateChatAsync(ChatRoomViewModel chat, Guid userId)
         {
             var existingChat = await _chatRoomRepository.GetByIdAsync(chat.Id);
@@ -81,10 +88,12 @@ namespace DiscordClone.Services.Data
             {
                 return false;
             }
+            
             if (existingChat.OwnerId != userId)
             {
                 return false;
             }
+            
             existingChat.Name = chat.Name;
             await _chatRoomRepository.UpdateAsync(existingChat);
             return true;
@@ -97,10 +106,12 @@ namespace DiscordClone.Services.Data
             {
                 return false;
             }
+            
             if (chat.OwnerId != userId)
             {
                 return false;
             }
+            
             await _chatRoomRepository.SoftDeleteAsync(id);
             return true;
         }
@@ -112,15 +123,18 @@ namespace DiscordClone.Services.Data
             {
                 throw new ArgumentException("User not found");
             }
+            
             var chat = await _chatRoomRepository.GetByIdAsync(message.ChatRoomId);
             if (chat == null)
             {
                 throw new ArgumentException("Chat not found");
             }
-            if (chat.Users.FirstOrDefault(user) == null)
+            
+            if (chat.Users.All(u => u.Id != userId) && chat.OwnerId != userId)
             {
                 throw new ArgumentException("User not in chat");
             }
+            
             var newMessage = new Message
             {
                 Content = message.Content,
@@ -132,23 +146,26 @@ namespace DiscordClone.Services.Data
             return newMessage.Id;
         }
 
-        public async Task<bool> SoftDeleteMessageAsync(Guid id, Guid userId)
+        public async Task<bool> SoftDeleteMessageAsync(Guid messageId, Guid userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
             {
                 throw new ArgumentException("User not found");
             }
-            var message = await _messageRepository.GetByIdAsync(id);
+            
+            var message = await _messageRepository.GetByIdAsync(messageId);
             if (message == null)
             {
                 return false;
             }
+            
             if (message.UserId != userId)
             {
                 return false;
             }
-            await _messageRepository.SoftDeleteAsync(id);
+            
+            await _messageRepository.SoftDeleteAsync(messageId);
             return true;
         }
 
@@ -159,11 +176,13 @@ namespace DiscordClone.Services.Data
             {
                 return false;
             }
+            
             var chat = await _chatRoomRepository.GetByIdAsync(chatId);
             if (chat == null)
             {
                 return false;
             }
+            
             var chatAdmin = await _userRepository.GetByIdAsync(userId);
             if (chatAdmin == null)
             {
@@ -181,31 +200,22 @@ namespace DiscordClone.Services.Data
             return true;
         }
 
-        public async Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId, string username)
+        public async Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId)
         {
-            var userTBRemoved = await _userRepository.GetByUsernameAsync(username);
-            if(userTBRemoved == null)
-            {
-                return false;
-            }
-
             var chat = await _chatRoomRepository.GetByIdAsync(chatId);
             if (chat == null)
             {
                 return false;
             }
+            
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
             {
                 return false;
             }
-            if (chat.Users.FirstOrDefault(userTBRemoved) == null)
-            {
-                return false;
-            }
-            chat.Users.Remove(userTBRemoved);
-            await _chatRoomRepository.UpdateAsync(chat);
-            return true;
+            
+            // Use the repository method to remove the user
+            return await _chatRoomRepository.RemoveUserFromChatRoomAsync(userId, chatId);
         }
 
 

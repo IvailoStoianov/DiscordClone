@@ -2,12 +2,16 @@
 using DiscordClone.Data.Models;
 using DiscordClone.Data.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DiscordClone.Data.Repository
 {
     public class ChatRoomRepository : IRepository<ChatRoom>, IChatRoomRepository
     {
         private readonly ApplicationDbContext _context;
+
         public ChatRoomRepository(ApplicationDbContext context)
         {
             _context = context;
@@ -15,38 +19,35 @@ namespace DiscordClone.Data.Repository
 
         public async Task AddAsync(ChatRoom entity)
         {
-            _context.ChatRooms.Add(entity);
+            await _context.ChatRooms.AddAsync(entity);
             await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(Guid id)
         {
-            var chatRoom = await _context
-                .ChatRooms
-                .FindAsync(id);
-
-            if (chatRoom == null)
+            var chatRoom = await _context.ChatRooms.FindAsync(id);
+            if (chatRoom != null)
             {
-                throw new Exception("Chat room not found");
+                _context.ChatRooms.Remove(chatRoom);
+                await _context.SaveChangesAsync();
             }
-            _context.ChatRooms.Remove(chatRoom);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<ChatRoom>> GetAllAsync()
         {
-            return await _context
-                .ChatRooms
-                .Include(c => c.Owner)
+            return await _context.ChatRooms
+                .Include(c => c.Messages)
+                .ThenInclude(m => m.User)
                 .ToListAsync();
         }
 
         public async Task<ChatRoom?> GetByIdAsync(Guid id)
         {
             return await _context.ChatRooms
+                .Include(c => c.Messages.Where(m => !m.IsDeleted))
+                .ThenInclude(m => m.User)
                 .Include(c => c.Users)
-                .Include(c => c.Messages)
-                .FirstOrDefaultAsync(c => c.Id == id);
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
         public async Task UpdateAsync(ChatRoom entity)
@@ -62,6 +63,7 @@ namespace DiscordClone.Data.Repository
             {
                 return false;
             }
+
             chatRoom.IsDeleted = true;
             await _context.SaveChangesAsync();
             return true;
@@ -71,6 +73,7 @@ namespace DiscordClone.Data.Repository
         {
             var chatRoom = await _context.ChatRooms
                 .Include(c => c.Users)
+                .Include(c => c.Owner)
                 .FirstOrDefaultAsync(c => c.Id == chatRoomId);
 
             if (chatRoom == null)
@@ -78,42 +81,44 @@ namespace DiscordClone.Data.Repository
                 return new List<User>();
             }
 
-            return chatRoom.Users.ToList();
+            var members = new List<User>(chatRoom.Users);
+            if (!members.Any(u => u.Id == chatRoom.OwnerId))
+            {
+                members.Add(chatRoom.Owner);
+            }
+
+            return members;
         }
 
         public async Task<bool> IsUserInChatRoomAsync(Guid userId, Guid chatRoomId)
         {
-            return await _context.ChatRoomUsers
-                .AnyAsync(cru => cru.UserId == userId && cru.ChatRoomId == chatRoomId);
+            var chatRoom = await GetByIdAsync(chatRoomId);
+            return chatRoom != null && (chatRoom.OwnerId == userId || chatRoom.Users.Any(u => u.Id == userId));
         }
 
         public async Task<bool> AddUserToChatRoomAsync(Guid userId, Guid chatRoomId)
         {
-            // Check if the relationship already exists
-            var exists = await _context.ChatRoomUsers
-                .AnyAsync(cru => cru.UserId == userId && cru.ChatRoomId == chatRoomId);
+            var chatRoom = await _context.ChatRooms
+                .Include(c => c.Users)
+                .FirstOrDefaultAsync(c => c.Id == chatRoomId);
 
-            if (exists)
+            if (chatRoom == null)
+            {
+                return false;
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            if (chatRoom.Users.Any(u => u.Id == userId))
             {
                 return true; // User is already in the chat room
             }
 
-            // Check if both user and chat room exist
-            var user = await _context.Users.FindAsync(userId);
-            var chatRoom = await _context.ChatRooms.FindAsync(chatRoomId);
-
-            if (user == null || chatRoom == null)
-            {
-                return false; // User or chat room doesn't exist
-            }
-
-            // Add the relationship
-            await _context.ChatRoomUsers.AddAsync(new ChatRoomUser
-            {
-                UserId = userId,
-                ChatRoomId = chatRoomId
-            });
-
+            chatRoom.Users.Add(user);
             await _context.SaveChangesAsync();
             return true;
         }
@@ -136,7 +141,7 @@ namespace DiscordClone.Data.Repository
         public async Task<IEnumerable<ChatRoom>> GetChatRoomsForUserAsync(Guid userId)
         {
             return await _context.ChatRooms
-                .Where(c => c.Users.Any(u => u.Id == userId) || c.OwnerId == userId)
+                .Where(c => (c.Users.Any(u => u.Id == userId) || c.OwnerId == userId) && c.IsDeleted == false)
                 .Include(c => c.Owner)
                 .ToListAsync();
         }

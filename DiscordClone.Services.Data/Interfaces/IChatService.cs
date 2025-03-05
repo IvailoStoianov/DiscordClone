@@ -13,8 +13,8 @@ namespace DiscordClone.Services.Data.Interfaces
         Task<bool> SoftDeleteChatAsync(Guid id, Guid userId);
         Task<Guid> PostMessageAsync(MessageViewModel message, Guid userId);
         Task<bool> SoftDeleteMessageAsync(Guid id, Guid userId);
-        Task<bool> AddUserToChatAsync(Guid chatId, Guid userId, string username);
-        Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId, string username);
+        Task<bool> AddUserToChatAsync(Guid chatId, Guid userId, string userName);
+        Task<bool> RemoveUserFromChatAsync(Guid chatId, Guid userId);
         Task<bool> IsUserInChatRoomAsync(Guid userId, Guid chatRoomId);
         Task<IEnumerable<User>> GetChatRoomMembersAsync(Guid chatRoomId);
     }

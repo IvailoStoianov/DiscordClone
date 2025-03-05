@@ -7,6 +7,8 @@ using DiscordClone.Services.Data;
 using DiscordClone.Services.Data.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
+using DiscordClone.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,6 +123,14 @@ builder.Services.AddSession(options =>
 
 builder.Services.AddDistributedMemoryCache();
 
+// Configure SignalR with proper authentication and options
+builder.Services.AddSignalR(options => {
+    options.EnableDetailedErrors = true;
+    options.MaximumReceiveMessageSize = 102400; // 100 KB
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -136,6 +146,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 
 // Add these in this order
+app.UseRouting();
 app.UseAuthentication();
 
 // Add this middleware after UseAuthentication
@@ -158,6 +169,8 @@ app.Use(async (context, next) =>
 
 app.UseAuthorization();
 
+// Map controllers and SignalR hub
 app.MapControllers();
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
