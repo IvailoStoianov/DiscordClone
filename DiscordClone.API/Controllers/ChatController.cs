@@ -52,7 +52,6 @@ namespace DiscordClone.API.Controllers
             return Ok(chats);
         }
 
-
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetChat(string id)
@@ -64,7 +63,6 @@ namespace DiscordClone.API.Controllers
             }
             return Ok(chat);
         }
-
 
         [HttpPost]
         [Route("")]
@@ -110,16 +108,13 @@ namespace DiscordClone.API.Controllers
             
             try
             {
-                // Post the message to the database
                 var messageId = await _chatService.PostMessageAsync(message, Guid.Parse(userId));
                 
-                // Get the updated message with user information to broadcast
                 var chat = await _chatService.GetChatByIdAsync(message.ChatRoomId);
                 var newMessage = chat?.Messages.FirstOrDefault(m => m.Id == messageId);
                 
                 if (newMessage != null)
                 {
-                    // Send the message to all clients in this chat room group
                     await _chatHubContext.Clients.Group(message.ChatRoomId.ToString())
                         .SendAsync("ReceiveMessage", newMessage);
                 }
@@ -132,7 +127,6 @@ namespace DiscordClone.API.Controllers
                 return StatusCode(500, new { message = "Error posting message" });
             }
         }
-
 
         [HttpDelete]
         [Route("{id}")]
@@ -151,7 +145,6 @@ namespace DiscordClone.API.Controllers
             return Ok();
         }
 
-
         [HttpDelete]
         [Route("message/{id}")]
         public async Task<IActionResult> DeleteMessage(string messageId)
@@ -164,24 +157,20 @@ namespace DiscordClone.API.Controllers
             
             try
             {
-                // Get the full message details before deletion
                 var message = await _messageRepository.GetByIdAsync(Guid.Parse(messageId));
                 if (message == null)
                 {
                     return NotFound();
                 }
                 
-                // Store the chat room ID for SignalR notification
                 var chatRoomId = message.ChatRoomId;
                 
-                // Delete the message
                 var result = await _chatService.SoftDeleteMessageAsync(Guid.Parse(messageId), Guid.Parse(userId));
                 if (!result)
                 {
                     return NotFound();
                 }
                 
-                // Notify all clients in the chat room about the deleted message
                 await _chatHubContext.Clients.Group(chatRoomId.ToString())
                     .SendAsync("MessageDeleted", messageId);
                 
@@ -189,15 +178,11 @@ namespace DiscordClone.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error deleting message {messageId}");
+                _logger.LogError(ex, "Error deleting message {MessageId}", messageId);
                 return StatusCode(500, new { message = "Error deleting message" });
             }
         }
 
-
-        /// <summary>
-        /// Adds a user to a chat room
-        /// </summary>
         [HttpPost]
         [Route("{chatId}/users/{username}")]
         public async Task<IActionResult> AddUserToChat(string chatId, string username)
@@ -210,34 +195,30 @@ namespace DiscordClone.API.Controllers
             
             try
             {
-                // First, add the user to the chat room in the database
                 var result = await _chatService.AddUserToChatAsync(Guid.Parse(chatId), Guid.Parse(userId), username);
                 if (!result)
                 {
                     return NotFound();
                 }
                 
-                // Get the user ID of the user being added
                 var addedUser = await _userService.GetUserByUsernameAsync(username);
                 if (addedUser == null)
                 {
                     return NotFound(new { message = "User not found" });
                 }
                 
-                // Get the chat room details to send in the notification
                 var chatRoom = await _chatService.GetChatByIdAsync(Guid.Parse(chatId));
                 if (chatRoom == null)
                 {
                     return NotFound(new { message = "Chat room not found" });
                 }
                 
-                // Notify the added user about their new chat room via SignalR
                 await _chatHubContext.Clients.User(addedUser.Id.ToString())
                     .SendAsync("UserAddedToChat", chatRoom);
                 
-                _logger.LogInformation($"User {username} (ID: {addedUser.Id}) added to chat {chatId}");
+                _logger.LogDebug("User {Username} (ID: {UserId}) added to chat {ChatRoomId}", 
+                    username, addedUser.Id, chatId);
                 
-                // Also notify all existing members of the room that a new user joined
                 await _chatHubContext.Clients.Group(chatId)
                     .SendAsync("UserJoinedRoom", new { userId = addedUser.Id, username = addedUser.UserName, roomId = chatId });
                 
@@ -245,14 +226,11 @@ namespace DiscordClone.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error adding user {username} to chat {chatId}");
+                _logger.LogError(ex, "Error adding user {Username} to chat {ChatRoomId}", username, chatId);
                 return StatusCode(500, new { message = "Error adding user to chat" });
             }
         }
 
-        /// <summary>
-        /// Removes a user from a chat room
-        /// </summary>
         [HttpDelete]
         [Route("{chatId}/users/{username}")]
         public async Task<IActionResult> RemoveUserFromChat(string chatId, string username)
@@ -265,14 +243,12 @@ namespace DiscordClone.API.Controllers
             
             try
             {
-                // Get the user ID of the user being removed
                 var removedUser = await _userService.GetUserByUsernameAsync(username);
                 if (removedUser == null)
                 {
                     return NotFound(new { message = "User not found" });
                 }
                 
-                // Call the service method to remove the user
                 var result = await _chatService.RemoveUserFromChatAsync(
                     Guid.Parse(chatId),
                     removedUser.Id);
@@ -282,13 +258,12 @@ namespace DiscordClone.API.Controllers
                     return NotFound();
                 }
                 
-                // Notify the removed user about being removed from the chat room
                 await _chatHubContext.Clients.User(removedUser.Id.ToString())
                     .SendAsync("UserRemovedFromChat", chatId);
                 
-                _logger.LogInformation($"User {username} (ID: {removedUser.Id}) removed from chat {chatId}");
+                _logger.LogDebug("User {Username} (ID: {UserId}) removed from chat {ChatRoomId}", 
+                    username, removedUser.Id, chatId);
                 
-                // Also notify all remaining members of the room that a user left
                 await _chatHubContext.Clients.Group(chatId)
                     .SendAsync("UserLeftRoom", new { userId = removedUser.Id, username = removedUser.UserName, roomId = chatId });
                 
@@ -296,7 +271,7 @@ namespace DiscordClone.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error removing user {username} from chat {chatId}");
+                _logger.LogError(ex, "Error removing user {Username} from chat {ChatRoomId}", username, chatId);
                 return StatusCode(500, new { message = "Error removing user from chat" });
             }
         }
@@ -318,7 +293,7 @@ namespace DiscordClone.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting members for chat room {chatRoomId}");
+                _logger.LogError(ex, "Error getting members for chat room {ChatRoomId}", chatRoomId);
                 return StatusCode(500, new { message = "Error retrieving chat room members" });
             }
         }

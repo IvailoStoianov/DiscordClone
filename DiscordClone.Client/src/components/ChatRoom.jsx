@@ -81,7 +81,7 @@ function ChatRoom({ userData, onLogout }) {
           setSignalRConnected(true);
         }
       } catch (error) {
-        console.error('Failed to connect to SignalR:', error);
+        showToast('Failed to connect to real-time service', 'error');
       }
     };
 
@@ -135,7 +135,6 @@ function ChatRoom({ userData, onLogout }) {
         
         // Handle user joining room (notification for existing members)
         onUserJoinedRoom((data) => {
-          console.log(`User ${data.username} joined this room`);
           showToast(`${data.username} joined the chat`, 'info');
           
           // Reload room members to reflect the change
@@ -144,7 +143,6 @@ function ChatRoom({ userData, onLogout }) {
         
         // Handle user leaving room (notification for remaining members)
         onUserLeftRoom((data) => {
-          console.log(`User ${data.username} left this room`);
           showToast(`${data.username} left the chat`, 'info');
           
           // Reload room members to reflect the change
@@ -177,8 +175,6 @@ function ChatRoom({ userData, onLogout }) {
     
     // Handle when the current user is added to a new chat room
     onUserAddedToChat((chatRoom) => {
-      console.log('You were added to a new chat room:', chatRoom);
-      
       // Add the new chat room to the list if it's not already there
       setChatRooms(prevRooms => {
         const exists = prevRooms.some(room => room.id === chatRoom.id);
@@ -191,8 +187,6 @@ function ChatRoom({ userData, onLogout }) {
     
     // Handle when the current user is removed from a chat room
     onUserRemovedFromChat((chatRoomId) => {
-      console.log('You were removed from chat room:', chatRoomId);
-      
       // Remove the chat room from the list
       setChatRooms(prevRooms => {
         const updatedRooms = prevRooms.filter(room => room.id !== chatRoomId);
@@ -236,7 +230,7 @@ function ChatRoom({ userData, onLogout }) {
   const loadChatRooms = async () => {
     setIsLoading(true);
     try {
-      const chats = await getAllChats(userData.id);
+      const chats = await getAllChats();
       
       // Make sure we always have an array, even if the API returns something else
       setChatRooms(Array.isArray(chats) ? chats : []);
