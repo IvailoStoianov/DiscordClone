@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
 using System.Threading.Tasks;
+using DiscordClone.ViewModels.ChatRoom;
 
 namespace DiscordClone.API.Hubs
 {
@@ -28,6 +29,16 @@ namespace DiscordClone.API.Hubs
         public async Task SendMessageToGroup(string chatRoomId, string message)
         {
             _logger.LogInformation($"User {Context.User.Identity.Name} sent message to room {chatRoomId}");
+        }
+
+        public async Task NotifyUserAddedToChat(string userId, ChatRoomViewModel chatRoom)
+        {
+            _logger.LogInformation($"Notifying user {userId} they've been added to room {chatRoom.Id}");
+        }
+
+        public async Task NotifyUserRemovedFromChat(string userId, string chatRoomId)
+        {
+            _logger.LogInformation($"Notifying user {userId} they've been removed from room {chatRoomId}");
         }
 
         public override async Task OnConnectedAsync()

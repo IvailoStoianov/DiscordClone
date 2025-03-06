@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using DiscordClone.API.Hubs;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,9 +36,16 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<ChatRoomRepository>();
 builder.Services.AddScoped<MessageRepository>();
 
-//Add servies
+//Add services
 builder.Services.AddScoped<IChatService, ChatService>();
-builder.Services.AddScoped<IUserService, UserService>();
+
+// Register UserService with its dependencies properly
+builder.Services.AddScoped<IUserService, UserService>(provider => {
+    var userManager = provider.GetRequiredService<UserManager<User>>();
+    var logger = provider.GetRequiredService<ILogger<UserService>>();
+    var userRepository = provider.GetRequiredService<UserRepository>();
+    return new UserService(userManager, logger, userRepository);
+});
 
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();
@@ -69,46 +77,16 @@ builder.Services.AddAuthentication(options =>
     options.Cookie.Name = ".AspNetCore.Cookies";
     options.LoginPath = "/api/auth/login";
     options.LogoutPath = "/api/auth/logout";
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    options.ExpireTimeSpan = TimeSpan.FromDays(7); // Increased from 30 minutes to 7 days
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.None;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     
     options.Events = new CookieAuthenticationEvents
     {
-        OnValidatePrincipal = async context =>
-        {
-            Console.WriteLine("Validating Principal");
-            Console.WriteLine($"Cookie present: {context.Request.Cookies[".AspNetCore.Cookies"] != null}");
-            if (context.Principal?.Identity?.IsAuthenticated == true)
-            {
-                foreach (var claim in context.Principal.Claims)
-                {
-                    Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Principal is not authenticated");
-                if (context.Principal == null)
-                    Console.WriteLine("Principal is null");
-                else if (context.Principal.Identity == null)
-                    Console.WriteLine("Identity is null");
-            }
-        },
         OnRedirectToLogin = context =>
         {
-            Console.WriteLine("Redirecting to login");
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        },
-        OnSigningIn = context =>
-        {
-            Console.WriteLine("Signing in user");
-            foreach (var claim in context.Principal.Claims)
-            {
-                Console.WriteLine($"Setting claim: {claim.Type} = {claim.Value}");
-            }
             return Task.CompletedTask;
         }
     };
@@ -148,25 +126,6 @@ app.UseCors("AllowReactApp");
 // Add these in this order
 app.UseRouting();
 app.UseAuthentication();
-
-// Add this middleware after UseAuthentication
-app.Use(async (context, next) =>
-{
-    Console.WriteLine("\n=== Request Details ===");
-    Console.WriteLine($"Request Path: {context.Request.Path}");
-    Console.WriteLine($"Request Method: {context.Request.Method}");
-    Console.WriteLine("=== Cookies ===");
-    foreach (var cookie in context.Request.Cookies)
-    {
-        Console.WriteLine($"Cookie: {cookie.Key} = {cookie.Value.Substring(0, Math.Min(cookie.Value.Length, 20))}...");
-    }
-    Console.WriteLine("=== Authentication Status ===");
-    Console.WriteLine($"Is Authenticated: {context.User?.Identity?.IsAuthenticated}");
-    Console.WriteLine($"Authentication Type: {context.User?.Identity?.AuthenticationType}");
-    
-    await next();
-});
-
 app.UseAuthorization();
 
 // Map controllers and SignalR hub

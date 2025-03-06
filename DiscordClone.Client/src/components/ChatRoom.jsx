@@ -13,6 +13,14 @@ import {
   onMessageDeleted,
   offReceiveMessage,
   offMessageDeleted,
+  onUserAddedToChat,
+  offUserAddedToChat,
+  onUserRemovedFromChat,
+  offUserRemovedFromChat,
+  onUserJoinedRoom,
+  offUserJoinedRoom,
+  onUserLeftRoom,
+  offUserLeftRoom,
   closeConnection
 } from '../services/signalRService'
 
@@ -124,8 +132,26 @@ function ChatRoom({ userData, onLogout }) {
             prevMessages.filter(message => message.id !== messageId)
           );
         });
+        
+        // Handle user joining room (notification for existing members)
+        onUserJoinedRoom((data) => {
+          console.log(`User ${data.username} joined this room`);
+          showToast(`${data.username} joined the chat`, 'info');
+          
+          // Reload room members to reflect the change
+          loadMembers(selectedRoom.id);
+        });
+        
+        // Handle user leaving room (notification for remaining members)
+        onUserLeftRoom((data) => {
+          console.log(`User ${data.username} left this room`);
+          showToast(`${data.username} left the chat`, 'info');
+          
+          // Reload room members to reflect the change
+          loadMembers(selectedRoom.id);
+        });
       } catch (error) {
-        showToast('Error connecting to chat room');
+        showToast('Error connecting to chat room', 'error');
       }
     };
 
@@ -140,8 +166,55 @@ function ChatRoom({ userData, onLogout }) {
       }
       offReceiveMessage();
       offMessageDeleted();
+      offUserJoinedRoom();
+      offUserLeftRoom();
     };
   }, [selectedRoom, signalRConnected]);
+
+  // Set up SignalR user events that need to be handled globally (not tied to specific rooms)
+  useEffect(() => {
+    if (!signalRConnected) return;
+    
+    // Handle when the current user is added to a new chat room
+    onUserAddedToChat((chatRoom) => {
+      console.log('You were added to a new chat room:', chatRoom);
+      
+      // Add the new chat room to the list if it's not already there
+      setChatRooms(prevRooms => {
+        const exists = prevRooms.some(room => room.id === chatRoom.id);
+        if (exists) return prevRooms;
+        
+        showToast(`You were added to chat room: ${chatRoom.name}`, 'success');
+        return [...prevRooms, chatRoom];
+      });
+    });
+    
+    // Handle when the current user is removed from a chat room
+    onUserRemovedFromChat((chatRoomId) => {
+      console.log('You were removed from chat room:', chatRoomId);
+      
+      // Remove the chat room from the list
+      setChatRooms(prevRooms => {
+        const updatedRooms = prevRooms.filter(room => room.id !== chatRoomId);
+        
+        // If the removed room was selected, clear the selection
+        if (selectedRoom && selectedRoom.id === chatRoomId) {
+          setSelectedRoom(null);
+          setMessages([]);
+          showToast('You were removed from the active chat room', 'warning');
+        } else {
+          showToast('You were removed from a chat room', 'info');
+        }
+        
+        return updatedRooms;
+      });
+    });
+    
+    return () => {
+      offUserAddedToChat();
+      offUserRemovedFromChat();
+    };
+  }, [signalRConnected, selectedRoom]);
 
   // Show toast notification
   const showToast = (message, type = 'error') => {

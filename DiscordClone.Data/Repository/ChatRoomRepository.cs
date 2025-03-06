@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace DiscordClone.Data.Repository
 {
+    /// <summary>
+    /// Repository for managing chat room data operations
+    /// </summary>
     public class ChatRoomRepository : IRepository<ChatRoom>, IChatRoomRepository
     {
         private readonly ApplicationDbContext _context;
@@ -17,12 +20,18 @@ namespace DiscordClone.Data.Repository
             _context = context;
         }
 
+        /// <summary>
+        /// Adds a new chat room to the database
+        /// </summary>
         public async Task AddAsync(ChatRoom entity)
         {
             await _context.ChatRooms.AddAsync(entity);
             await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Permanently deletes a chat room from the database
+        /// </summary>
         public async Task DeleteAsync(Guid id)
         {
             var chatRoom = await _context.ChatRooms.FindAsync(id);
@@ -33,6 +42,9 @@ namespace DiscordClone.Data.Repository
             }
         }
 
+        /// <summary>
+        /// Gets all chat rooms from the database
+        /// </summary>
         public async Task<IEnumerable<ChatRoom>> GetAllAsync()
         {
             return await _context.ChatRooms
@@ -41,6 +53,9 @@ namespace DiscordClone.Data.Repository
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Gets a chat room by ID with related messages and users
+        /// </summary>
         public async Task<ChatRoom?> GetByIdAsync(Guid id)
         {
             return await _context.ChatRooms
@@ -50,12 +65,18 @@ namespace DiscordClone.Data.Repository
                 .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
         }
 
+        /// <summary>
+        /// Updates an existing chat room in the database
+        /// </summary>
         public async Task UpdateAsync(ChatRoom entity)
         {
             _context.ChatRooms.Update(entity);
             await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Marks a chat room as deleted without removing it from the database
+        /// </summary>
         public async Task<bool> SoftDeleteAsync(Guid id)
         {
             var chatRoom = await _context.ChatRooms.FindAsync(id);
@@ -69,6 +90,9 @@ namespace DiscordClone.Data.Repository
             return true;
         }
 
+        /// <summary>
+        /// Gets all members of a chat room
+        /// </summary>
         public async Task<IEnumerable<User>> GetChatRoomMembersAsync(Guid chatRoomId)
         {
             var chatRoom = await _context.ChatRooms
@@ -90,12 +114,18 @@ namespace DiscordClone.Data.Repository
             return members;
         }
 
+        /// <summary>
+        /// Checks if a user is a member of a chat room
+        /// </summary>
         public async Task<bool> IsUserInChatRoomAsync(Guid userId, Guid chatRoomId)
         {
             var chatRoom = await GetByIdAsync(chatRoomId);
             return chatRoom != null && (chatRoom.OwnerId == userId || chatRoom.Users.Any(u => u.Id == userId));
         }
 
+        /// <summary>
+        /// Adds a user to a chat room
+        /// </summary>
         public async Task<bool> AddUserToChatRoomAsync(Guid userId, Guid chatRoomId)
         {
             var chatRoom = await _context.ChatRooms
@@ -123,6 +153,9 @@ namespace DiscordClone.Data.Repository
             return true;
         }
 
+        /// <summary>
+        /// Removes a user from a chat room
+        /// </summary>
         public async Task<bool> RemoveUserFromChatRoomAsync(Guid userId, Guid chatRoomId)
         {
             var chatRoomUser = await _context.ChatRoomUsers
@@ -138,6 +171,9 @@ namespace DiscordClone.Data.Repository
             return true;
         }
 
+        /// <summary>
+        /// Gets all chat rooms that a user is a member of
+        /// </summary>
         public async Task<IEnumerable<ChatRoom>> GetChatRoomsForUserAsync(Guid userId)
         {
             return await _context.ChatRooms

@@ -6,6 +6,8 @@ export { API_BASE_URL };
 // Helper function for API requests
 async function fetchWithErrorHandling(url, options = {}) {
   try {
+    console.log(`Making request to: ${url}`, options);
+    
     const response = await fetch(url, {
       ...options,
       credentials: 'include',
@@ -16,16 +18,34 @@ async function fetchWithErrorHandling(url, options = {}) {
       }
     });
 
+    console.log(`Response status: ${response.status}`);
+    
     // Check if there's any content
     const contentType = response.headers.get("content-type");
+    console.log(`Content type: ${contentType}`);
     
     if (!response.ok) {
+      let errorMessage = `Request failed with status ${response.status}`;
+      
       if (contentType && contentType.includes("application/json")) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Request failed with status ${response.status}`);
-      } else {
-        throw new Error(`Request failed with status ${response.status}`);
+        try {
+          const errorData = await response.json();
+          console.log("Error response data:", errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
+      } else if (contentType && contentType.includes("text")) {
+        try {
+          const errorText = await response.text();
+          console.log("Error response text:", errorText);
+          errorMessage = errorText || errorMessage;
+        } catch (parseError) {
+          console.error("Error reading error response text:", parseError);
+        }
       }
+      
+      throw new Error(errorMessage);
     }
 
     // Handle empty responses
@@ -35,11 +55,20 @@ async function fetchWithErrorHandling(url, options = {}) {
 
     // Only try to parse as JSON if it's actually JSON
     if (contentType && contentType.includes("application/json")) {
-      return await response.json();
+      try {
+        const data = await response.json();
+        console.log("Response data:", data);
+        return data;
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        throw new Error("Invalid JSON response from server");
+      }
     } 
     
     // Return text for non-JSON responses
-    return await response.text();
+    const text = await response.text();
+    console.log("Response text:", text);
+    return text;
   } catch (error) {
     console.error('API request failed:', error);
     throw error;
@@ -61,15 +90,42 @@ export function checkLocalSession() {
 // Auth functions
 export async function loginUser(username) {
   try {
+    console.log(`Attempting to login with username: ${username}, length: ${username.length}`);
+    
+    // Validate username length according to server requirements (3-50 characters)
+    if (username.length < 3) {
+      throw new Error("Username must be at least 3 characters long");
+    }
+    
+    if (username.length > 50) {
+      throw new Error("Username cannot exceed 50 characters");
+    }
+    
     // Call login endpoint which sets the authentication cookie
-    await fetchWithErrorHandling(`${API_BASE_URL}/auth/login`, {
+    const response = await fetchWithErrorHandling(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       body: JSON.stringify({ username })
     });
     
+    console.log("Login successful, response:", response);
+    
+    // If the server returned user data directly, use it
+    if (response && response.id) {
+      const userData = {
+        username: response.username,
+        id: response.id,
+        isLoggedIn: true
+      };
+      
+      localStorage.setItem('userSession', JSON.stringify(userData));
+      return userData;
+    }
+    
     // After login, try to get all chatrooms to extract user ID 
     try {
       const chats = await fetchWithErrorHandling(`${API_BASE_URL}/chat`);
+      console.log("Fetched chats after login:", chats);
+      
       // Look for an owner ID in the chats to get a valid user ID
       const userId = chats && chats.length > 0 && chats[0].ownerId ? 
                      chats[0].ownerId : generateUuid();
@@ -216,6 +272,7 @@ export async function deleteMessage(messageId) {
   });
 }
 
+// This function now serves as both a data fetcher and auth validator
 export const loadChatRooms = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -226,13 +283,21 @@ export const loadChatRooms = async () => {
       credentials: 'include', 
     });
     
-    if (!response.ok) {
-      throw new Error('Login failed');
+    // If we get a 401 Unauthorized, the session is invalid
+    if (response.status === 401) {
+      console.log('Session expired or invalid');
+      return false;
     }
     
+    if (!response.ok) {
+      console.error('Error loading chat rooms:', response.status);
+      return false;
+    }
+    
+    // If we got a successful response, the session is valid
     return true;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Authentication verification failed:', error);
     return false;
   }
 };
@@ -263,4 +328,39 @@ export async function deleteChat(chatId) {
   return await fetchWithErrorHandling(`${API_BASE_URL}/chat/${chatId}?chatId=${chatId}`, {
     method: 'DELETE'
   });
+}
+
+// Add a function to verify authentication
+export async function verifyAuthentication() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    
+    if (response.status === 401) {
+      return { isAuthenticated: false };
+    }
+    
+    if (!response.ok) {
+      console.error('Error verifying authentication:', response.status);
+      return { isAuthenticated: false };
+    }
+    
+    const data = await response.json();
+    return { 
+      isAuthenticated: true,
+      userData: {
+        id: data.id,
+        username: data.username,
+        isLoggedIn: true
+      }
+    };
+  } catch (error) {
+    console.error('Authentication verification failed:', error);
+    return { isAuthenticated: false };
+  }
 } 

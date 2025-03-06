@@ -195,6 +195,9 @@ namespace DiscordClone.API.Controllers
         }
 
 
+        /// <summary>
+        /// Adds a user to a chat room
+        /// </summary>
         [HttpPost]
         [Route("{chatId}/users/{username}")]
         public async Task<IActionResult> AddUserToChat(string chatId, string username)
@@ -204,18 +207,55 @@ namespace DiscordClone.API.Controllers
             {
                 return Unauthorized();
             }
-            var result = await _chatService.AddUserToChatAsync(Guid.Parse(chatId), Guid.Parse(userId), username);
-            if (!result)
+            
+            try
             {
-                return NotFound();
+                // First, add the user to the chat room in the database
+                var result = await _chatService.AddUserToChatAsync(Guid.Parse(chatId), Guid.Parse(userId), username);
+                if (!result)
+                {
+                    return NotFound();
+                }
+                
+                // Get the user ID of the user being added
+                var addedUser = await _userService.GetUserByUsernameAsync(username);
+                if (addedUser == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+                
+                // Get the chat room details to send in the notification
+                var chatRoom = await _chatService.GetChatByIdAsync(Guid.Parse(chatId));
+                if (chatRoom == null)
+                {
+                    return NotFound(new { message = "Chat room not found" });
+                }
+                
+                // Notify the added user about their new chat room via SignalR
+                await _chatHubContext.Clients.User(addedUser.Id.ToString())
+                    .SendAsync("UserAddedToChat", chatRoom);
+                
+                _logger.LogInformation($"User {username} (ID: {addedUser.Id}) added to chat {chatId}");
+                
+                // Also notify all existing members of the room that a new user joined
+                await _chatHubContext.Clients.Group(chatId)
+                    .SendAsync("UserJoinedRoom", new { userId = addedUser.Id, username = addedUser.UserName, roomId = chatId });
+                
+                return Ok(new { message = $"User {username} added to chat room" });
             }
-            return Ok();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error adding user {username} to chat {chatId}");
+                return StatusCode(500, new { message = "Error adding user to chat" });
+            }
         }
 
-
+        /// <summary>
+        /// Removes a user from a chat room
+        /// </summary>
         [HttpDelete]
-        [Route("{chatId}/users/{userToRemoveId}")]
-        public async Task<IActionResult> RemoveUserFromChat(string chatId, string userToRemoveId)
+        [Route("{chatId}/users/{username}")]
+        public async Task<IActionResult> RemoveUserFromChat(string chatId, string username)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
@@ -223,16 +263,42 @@ namespace DiscordClone.API.Controllers
                 return Unauthorized();
             }
             
-            // Call the service method with the correct number of parameters
-            var result = await _chatService.RemoveUserFromChatAsync(
-                Guid.Parse(chatId),
-                Guid.Parse(userId));
-                
-            if (!result)
+            try
             {
-                return NotFound();
+                // Get the user ID of the user being removed
+                var removedUser = await _userService.GetUserByUsernameAsync(username);
+                if (removedUser == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
+                
+                // Call the service method to remove the user
+                var result = await _chatService.RemoveUserFromChatAsync(
+                    Guid.Parse(chatId),
+                    removedUser.Id);
+                    
+                if (!result)
+                {
+                    return NotFound();
+                }
+                
+                // Notify the removed user about being removed from the chat room
+                await _chatHubContext.Clients.User(removedUser.Id.ToString())
+                    .SendAsync("UserRemovedFromChat", chatId);
+                
+                _logger.LogInformation($"User {username} (ID: {removedUser.Id}) removed from chat {chatId}");
+                
+                // Also notify all remaining members of the room that a user left
+                await _chatHubContext.Clients.Group(chatId)
+                    .SendAsync("UserLeftRoom", new { userId = removedUser.Id, username = removedUser.UserName, roomId = chatId });
+                
+                return Ok(new { message = $"User {username} removed from chat room" });
             }
-            return Ok();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error removing user {username} from chat {chatId}");
+                return StatusCode(500, new { message = "Error removing user from chat" });
+            }
         }
 
         [HttpGet("{chatRoomId}/members")]

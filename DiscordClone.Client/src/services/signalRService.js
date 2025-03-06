@@ -137,4 +137,86 @@ export const getConnectionState = () => {
 };
 
 // Export the connection for external access if needed
-export const getConnection = () => connection; 
+export const getConnection = () => connection;
+
+// Set up event handler for when user is added to a chat room
+export function onUserAddedToChat(callback) {
+  if (!connection) {
+    console.error('Cannot set up user added handler: SignalR not connected');
+    return;
+  }
+
+  // Make sure event name exactly matches what the server broadcasts (case-sensitive)
+  connection.on('UserAddedToChat', callback);
+}
+
+// Remove event handler for when user is added to a chat room
+export function offUserAddedToChat() {
+  if (!connection) {
+    console.error('Cannot remove user added handler: SignalR not connected');
+    return;
+  }
+
+  connection.off('UserAddedToChat');
+}
+
+// Set up event handler for when user is removed from a chat room
+export function onUserRemovedFromChat(callback) {
+  if (!connection) {
+    console.error('Cannot set up user removed handler: SignalR not connected');
+    return;
+  }
+
+  // Make sure event name exactly matches what the server broadcasts (case-sensitive)
+  connection.on('UserRemovedFromChat', callback);
+}
+
+// Remove event handler for when user is removed from a chat room
+export function offUserRemovedFromChat() {
+  if (!connection) {
+    console.error('Cannot remove user removed handler: SignalR not connected');
+    return;
+  }
+
+  connection.off('UserRemovedFromChat');
+}
+
+// Set up event handler for when a user joins a chat room
+export function onUserJoinedRoom(callback) {
+  if (!connection) {
+    console.error('Cannot set up user joined handler: SignalR not connected');
+    return;
+  }
+
+  connection.on('UserJoinedRoom', callback);
+}
+
+// Remove event handler for when a user joins a chat room
+export function offUserJoinedRoom() {
+  if (!connection) {
+    console.error('Cannot remove user joined handler: SignalR not connected');
+    return;
+  }
+
+  connection.off('UserJoinedRoom');
+}
+
+// Set up event handler for when a user leaves a chat room
+export function onUserLeftRoom(callback) {
+  if (!connection) {
+    console.error('Cannot set up user left handler: SignalR not connected');
+    return;
+  }
+
+  connection.on('UserLeftRoom', callback);
+}
+
+// Remove event handler for when a user leaves a chat room
+export function offUserLeftRoom() {
+  if (!connection) {
+    console.error('Cannot remove user left handler: SignalR not connected');
+    return;
+  }
+
+  connection.off('UserLeftRoom');
+} 
